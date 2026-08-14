@@ -1,0 +1,196 @@
+<script src="component.js"></script>
+
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTA升级</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <style>
+        .progress {
+            width: 100%;
+            max-width: 400px;
+            height: 40px;
+            background: linear-gradient(to right, #e8f4f8, #f0f0f0);
+            border-radius: 20px;
+            margin: 20px auto 0 auto;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--blue) 0%, var(--cyan) 100%);
+            width: 0%;
+            transition: width 0.4s ease;
+            text-align: center;
+            line-height: 40px;
+            color: var(--white);
+            font-weight: 600;
+            font-size: 15px;
+            box-shadow: 0 2px 8px rgba(0, 103, 182, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                left: -100%;
+            }
+
+            100% {
+                left: 100%;
+            }
+        }
+
+        #status {
+            margin-top: 16px;
+            min-height: 24px;
+            color: var(--blue);
+            font-size: 1.08em;
+        }
+    </style>
+</head>
+
+<body>
+    <web-styles></web-styles>
+    <div class="container">
+        <button class="btn-red" onclick="goBack()" style="position: absolute; left: 25px; top: 20;">返回</button>
+
+        <h1>OTA固件升级</h1>
+        <h3>方式1: 从URL升级</h3>
+        <input type="text" id="otaUrl" placeholder="http://yourserver.com/firmware.bin">
+        <button class="btn-blue" onclick="startOTAFromURL(event)">开始URL升级</button>
+        <br><br>
+
+        <h3>方式2: 上传固件文件</h3>
+        <input type="file" id="otaFile" accept=".bin">
+        <button class="btn-cyan" onclick="startOTAFromFile()">开始文件升级</button>
+        <div class="progress" id="progressBar" style="display:none;">
+            <div class="progress-bar" id="progress">0%</div>
+        </div>
+        <p id="status"></p>
+    </div>
+    <script>
+        var pollInterval = null;
+        function goBack() {
+            window.location.href = '../';
+        }
+        function OTASuccess() {
+            document.getElementById('status').innerText = '升级成功!设备将重启...';
+            setTimeout(function () { 
+                alert('请手动关闭此页面。');
+                document.body.innerHTML = `
+                <div class='container'>
+                    <svg width='56' height='56' viewBox='0 0 24 24' fill='none' stroke='#0067b6' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' style='margin-bottom: 18px;'>
+                        <circle cx='12' cy='12' r='10' fill='#eaf6ff' />
+                        <polyline points='8 12.5 11 15.5 16 10.5' stroke='#2ecc71' stroke-width='2.2' fill='none' />
+                        <circle cx='12' cy='12' r='10' stroke='#0067b6' stroke-width='2.2' fill='none' />
+                    </svg>
+                    <h1>OTA已完成</h1>
+                    <p style='font-size: 1.18em; color: var(--gray-lighter); margin-bottom: 18px;'>请手动关闭此页面</p>
+                </div>
+                `;
+            }, 2000);
+        }
+
+        // 从URL升级
+        function startOTAFromURL(event) {
+            var url = document.getElementById('otaUrl').value;
+            if (!url) { alert('请输入URL'); return; }
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'http://' + url;
+            }
+
+            var btn = event.target;
+            btn.disabled = true;
+            document.getElementById('status').innerText = '正在启动 OTA...';
+            document.getElementById('progressBar').style.display = 'block';
+            fetch('/ota/url?url=' + encodeURIComponent(url))
+                .then(r => {
+                    if (r.status === 202) {
+                        document.getElementById('status').innerText = '正在下载固件...';
+                        pollInterval = setInterval(function () {
+                            // /ota/progress返回Json的 progress status error对象
+                            fetch('/ota/progress')
+                                .then(r => r.json())
+                                .then(data => {
+                                    var pct = data.progress || 0;
+                                    document.getElementById('progress').style.width = pct + '%';
+                                    document.getElementById('progress').innerText = pct + '%';
+                                    if (data.status === 'success') {
+                                        clearInterval(pollInterval);
+                                        OTASuccess();
+                                    } else if (data.status === 'failed') {
+                                        clearInterval(pollInterval);
+                                        document.getElementById('status').innerText = '升级失败: ' + data.error;
+                                        btn.disabled = false;
+                                    }
+                                })
+                                .catch(() => { });
+                        }, 500);
+                    } else if (!r.ok) {
+                        throw new Error('HTTP ' + r.status);
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('status').innerText = '启动OTA失败: ' + error.message;
+                    btn.disabled = false;
+                    document.getElementById('progressBar').style.display = 'none';
+                });
+        }
+
+        // 从文件升级
+        function startOTAFromFile() {
+            var file = document.getElementById('otaFile').files[0];
+            if (!file) { alert('请选择文件'); return; }
+
+            document.getElementById('progressBar').style.display = 'block';
+            document.getElementById('status').innerText = '正在上传固件...';
+
+            var formData = new FormData();
+            formData.append('firmware', file);
+            var xhr = new XMLHttpRequest();
+            xhr.upload.onprogress = function (e) {
+                if (e.lengthComputable) {
+                    var pct = Math.round((e.loaded / e.total) * 100);
+                    document.getElementById('progress').style.width = pct + '%';
+                    document.getElementById('progress').innerText = pct + '%';
+                }
+            };
+
+            xhr.onload = function () {
+                if (xhr.status == 200) {
+                    var resp = JSON.parse(xhr.responseText);
+                    if (resp.success) {
+                        OTASuccess();
+                    } else {
+                        document.getElementById('status').innerText = '升级失败: ' + resp.error;
+                    }
+                }
+                else {
+                    document.getElementById('status').innerText = '上传失败: HTTP ' + xhr.status;
+                }
+            };
+            xhr.open('POST', '/ota/upload');
+            xhr.send(formData);
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,46 @@
+/**
+ * @file jwt_auth.h
+ * @brief JWT 认证头文件，提供 JWT 生成和配置功能
+ *
+ * 此文件声明 JWT 配置、种子生成和 Token 生成的函数和变量
+ *
+ * @author kulib
+ * @date 2025-11-05
+ */
+#ifndef JWT_AUTH_H
+#define JWT_AUTH_H
+
+#include <sodium.h>
+#include <ArduinoJson.h>
+
+#include "mydefine.h"
+#include "./services/qweather_auth_config_manager.h"
+#include "./utils/logger.h"
+
+extern uint8_t seed32[32];         /**< 32 字节 Ed25519 种子 */
+
+/**
+ * @brief 初始化 JWT 配置
+ * @details 从 SPIFFS 文件系统加载 JWT 配置文件，读取 API 地址、Key ID 等参数
+ */
+void loadJwtConfig();
+
+/**
+ * @brief 生成 seed32
+ * @details 从 Base64 编码的 PKCS#8 私钥中解码并提取 Ed25519 的 32 字节种子
+ */
+void generateSeed32();
+
+/**
+ * @brief 生成 JWT Token
+ * @param kid Key ID，用于 JWT header
+ * @param projectID 项目 ID，用于 JWT payload
+ * @param seed32 32 字节 Ed25519 种子，用于生成密钥对和签名
+ * @return 生成的 JWT Token 字符串
+ */
+String generate_jwt(const String& kid, const String& projectID, const uint8_t* seed32);
+
+// 检测 base64 PKCS#8 Ed25519 私钥 (返回是否有效)
+bool validate_base64_ed25519_key(const char* base64);
+
+#endif

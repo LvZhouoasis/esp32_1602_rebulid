@@ -1,0 +1,31 @@
+<script src="component.js"></script>
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <title>搜索结果</title>
+</head>
+<body>
+    <web-styles></web-styles>
+      <div class='container'>
+          <button type='button' class='btn-red' onclick="goBack()" style="position: absolute; left: 25px; top: 20;">返回</button>
+          <h1>搜索结果</h1>
+          <ul style='list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:16px;'>
+              <li style='margin:0;'>
+                  <form action='/set_location' method='POST' style='display:inline;'>
+                      <input type='hidden' name='locid' value='城市ID'>
+                      <input type='hidden' name='fxlink' value='链接'>
+                      <button type='submit' class = "btn-blue">城市名 (省份, 国家)</button>
+                  </form>
+              </li>
+          </ul>
+    </div>
+</body>
+<script>
+    function goBack() {
+        window.location.href = '../citysearch';
+    }
+</script>
+</html>

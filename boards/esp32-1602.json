@@ -1,0 +1,49 @@
+{
+  "build": {
+    "arduino": {
+      "ldscript": "esp32s3_out.ld",
+      "partitions": "partitions.csv"
+    },
+    "core": "esp32",
+    "mcu": "esp32s3",
+    "variant": "esp32s3",
+    "extra_flags": [
+      "-DARDUINO_ESP32S3_DEV",
+      "-DARDUINO_USB_MODE=1",
+      "-DARDUINO_RUNNING_CORE=1",
+      "-DARDUINO_EVENT_RUNNING_CORE=1",
+      "-DCONFIG_PM_ENABLE=1",
+      "-DCONFIG_PM_DFS_INIT_AUTO=1",
+      "-DCONFIG_ESP32_RTC_CLOCK_SOURCE_EXTERNAL_CRYSTAL=1",
+      "-DBOARD_HAS_PSRAM",
+      "-DCONFIG_SPIRAM_MODE_OCT=1",
+      "-DCONFIG_SPIRAM_SIZE=8388608",
+      "-DCONFIG_SPIRAM_SPEED=80",
+      "-DCONFIG_SPIRAM=1"
+    ],
+    "f_cpu": "240000000L",
+    "f_flash": "80000000L",
+
+    "flash_size": "16MB",
+    "flash_mode": "qio"
+  },
+  "connectivity": [
+    "wifi",
+    "bluetooth",
+    "ble"
+  ],
+  "debug": {
+    "openocd_target": "esp32s3.cfg"
+  },
+  "frameworks": [
+    "arduino"
+  ],
+  "name": "ESP32-S3 based Board",
+  "upload": {
+    "maximum_ram_size": 8388608,
+    "maximum_size": 16777216,
+    "speed": 921600
+  },
+  "url": "https://www.kulib88.com",
+  "vendor": "JLC PCB"
+}

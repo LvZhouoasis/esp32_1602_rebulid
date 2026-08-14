@@ -1,0 +1,33 @@
+/**
+ * @file weather.h
+ * @brief 天气应用头文件，提供天气数据获取和显示功能
+ *
+ * 此文件声明天气系统的变量和函数，用于ESP32设备的天气信息管理
+ *
+ * @author kulib
+ * @date 2025-11-04
+ */
+#ifndef WEATHER_H
+#define WEATHER_H
+
+#include <zlib_turbo.h>
+
+#include "./menu/menu.h"
+#include "./applications/clock.h"
+#include "./connectivity/jwt_auth.h"
+#include "./hardware/lcd_driver.h"
+#include "./hardware/button.h"
+#include "./ui/icons.h"
+#include "./utils/memory_utils.h"
+#include "./utils/logger.h"
+
+extern bool weatherSynced;              /**< 天气是否已同步的标志 */
+extern unsigned long lastWeatherUpdate; /**< 最后天气更新的时间戳 */
+extern unsigned int interface_num;      /**< 当前显示的界面编号 */
+
+void enterWeatherInterface();        /**< 进入天气界面 */
+void handleWeatherInterface();       /**< 处理天气界面状态机 */
+void updateWeatherScreen();             /**< 更新LCD上的天气显示 */
+bool fetchWeatherData();                /**< 获取天气数据 */
+
+#endif
