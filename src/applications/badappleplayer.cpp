@@ -74,49 +74,6 @@ const LyricLine* _getLyricForFrame(int currentFrame) {
     return last;
 }
 
-// UTF-8三字节转Unicode码
-int _utf8ToUnicode(char c0, char c1, char c2) {
-    return ((c0 & 0x0F) << 12) | ((c1 & 0x3F) << 6) | (c2 & 0x3F);
-}
-
-// 转换UTF-8字符串到假名字符串
-String _convertUtf8ToKana(const char* utf8Str) {
-    String result = "";
-    int i = 0;
-    int len = strlen(utf8Str);
-    while (i < len) {
-        uint8_t c = (uint8_t)utf8Str[i];
-
-        if (c == 0xE3) {                // 3字节UTF-8起始
-            if (i + 2 >= len) break;
-            char c1 = utf8Str[i + 1];
-            char c2 = utf8Str[i + 2];
-
-            int key = _utf8ToUnicode(c, c1, c2) - 12000;
-            if (key >= 0 && key < kanaMapSize && kanaMap[key] != "") {
-                String kana = kanaMap[key];
-                result += kana[0];
-                if ((uint8_t)kana[1] == 222) {  // 如果有第二字节，加入
-                    result += kana[1];
-                }
-            } 
-            else {
-                // 未知假名，替换为空格
-                result += " ";
-            }
-            i += 3;
-        } else if (c < 0x80) {
-            // ASCII字符直接加入
-            result += (char)c;
-            i++;
-        } else {
-            // 其他UTF-8字节简单跳过或替换为空格
-            i++;
-        }
-    }
-    return result;
-}
-
 void _processBlock(int startBlock, const uint8_t* raw){
     for (int block = startBlock; block < startBlock + 4; block++) {
         uint8_t charMap[8];
@@ -130,12 +87,12 @@ void _processBlock(int startBlock, const uint8_t* raw){
 
 void _lyricDisplay(const LyricLine* lyric,int lineNumber){
     if (lyric != NULL) {
-        String lineConverted;
+        const char* text = nullptr;
         if (lineNumber == 1) {
-            lineConverted = _convertUtf8ToKana(lyric->text_line1);
+            text = lyric->text_line1;
         }
         else if (lineNumber == 2) {
-            lineConverted = _convertUtf8ToKana(lyric->text_line2);
+            text = lyric->text_line2;
         }
         else{
             LOG_DISPLAY_WARN("lyricDisplay: Invalid line number %d", lineNumber);
@@ -143,11 +100,11 @@ void _lyricDisplay(const LyricLine* lyric,int lineNumber){
             return;
         }
 
-        int len = lineConverted.length();
+        int len = strlen(text);
         lcdDisChar(' ');
         for (int i = 0; i < 11; i++) {
             if (i < len) {
-                lcdDisChar(lineConverted[i]);
+                lcdDisChar(text[i]);
             } else {
                 lcdDisChar(' '); // 自动补空格
             }

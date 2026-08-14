@@ -288,58 +288,7 @@ void lcdInit(){
     LOG_LCD_INFO("LCD initialized");
 }
 
-// UTF-8假名字符转换到LCD字符编码
-String convertUTF8ToKana(const String& text) {
-    String result = "";
-    int i = 0;
-    
-    while (i < text.length()) {
-        // 检查是否为UTF-8多字节字符（日语假名）
-        if ((uint8_t)text[i] >= 0x80) {
-            // UTF-8多字节字符处理
-            if (i + 2 < text.length()) {
-                // 提取3字节的UTF-8字符
-                uint8_t b1 = (uint8_t)text[i];
-                uint8_t b2 = (uint8_t)text[i+1];
-                uint8_t b3 = (uint8_t)text[i+2];
-                
-                // 计算Unicode码点
-                if ((b1 & 0xF0) == 0xE0) {
-                    int kanaIndex = -1;
-
-                    uint32_t codepoint = ((b1 & 0x0F) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F);
-                    if ((codepoint >= 12353 && codepoint <= 12438) || (codepoint >= 12449 && codepoint <= 12534))
-                        kanaIndex = codepoint - 12000;
-                    
-                    // 查找假名映射
-                    if (kanaIndex >= 0 && kanaIndex < kanaMapSize && kanaMap[kanaIndex] != "") {
-                        result += kanaMap[kanaIndex];
-                    } else {
-                        LOG_LCD_WARN("Unknown kana Unicode: " + String(codepoint));
-                        result += " "; // 未找到对应假名时显示空格
-                    }
-                    
-                    i += 3; // 跳过3字节
-                } else {
-                    LOG_LCD_WARN("Invalid UTF-8 sequence");
-                    result += " ";
-                    i++;
-                }
-            } else {
-                result += " ";
-                i++;
-            }
-        } else {
-            // ASCII字符直接添加
-            result += text[i];
-            i++;
-        }
-    }
-    
-    return result;
-}
-
-// 显示函数(用于简单显示/调试，支持日语假名)
+// 显示函数(用于简单显示/调试)
 void lcdText(const String& ltext,int line){
     // 设置行地址
     int rowStart = 0;
@@ -350,14 +299,11 @@ void lcdText(const String& ltext,int line){
     else
         return;     // 非法行号，直接返回
 
-    // 转换UTF-8假名到LCD字符编码
-    String convertedText = convertUTF8ToKana(ltext);
-    
-    int tsize = convertedText.length();
+    int tsize = ltext.length();
     for(int size = 0; size < 16; size++){     // 逐字写入待渲染缓冲
         uint8_t code = 0x20;
         if (size <= tsize - 1) {
-            code = static_cast<uint8_t>(convertedText[size]);
+            code = static_cast<uint8_t>(ltext[size]);
         }
         _queueCharAt(static_cast<uint8_t>(rowStart + size), code);
     }
@@ -445,9 +391,8 @@ void lcdDisChar(char text){             //显示函数
 
 // 连续显示整段的普通字符，不清除其他的内容，注意越界
 void lcdPrint(const String& s) {
-    String converted = convertUTF8ToKana(s);
-    for (unsigned int i = 0; i < converted.length(); i++) {
-        _queueCharAt(static_cast<uint8_t>(lcdCursor), static_cast<uint8_t>(converted[i]));
+    for (unsigned int i = 0; i < s.length(); i++) {
+        _queueCharAt(static_cast<uint8_t>(lcdCursor), static_cast<uint8_t>(s[i]));
         _nextCursor();
     }
     _flushPendingFrame();

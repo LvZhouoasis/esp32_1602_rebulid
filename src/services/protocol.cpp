@@ -70,31 +70,26 @@ void processIncoming(const uint8_t* raw, unsigned int fullLen) {
             if (i >= fullLen) break;
             uint8_t c0 = raw[i++];
 
-            // 绝大多数情况下是 ASCII，直接写入帧缓冲
-            if (c0 != 0xE3) {
+            // ASCII 字符直接写入帧缓冲
+            if (c0 < 0x80) {
                 frame[cursor++] = static_cast<uint8_t>(c0);
             }
-            // 处理 3 字节 UTF-8（假名）: E3 xx xx
-            else {
-                if (i + 1 >= fullLen) {
-                    LOG_DISPLAY_WARN("UTF-8数据不完整");
-                    break;
-                }
-
-                const uint8_t c1 = raw[i++];
-                const uint8_t c2 = raw[i++];
-                const int key = (int)(((c0 & 0x0F) << 12) | ((c1 & 0x3F) << 6) | (c2 & 0x3F)) - 12000;
-
-                if (key < 0 || key >= kanaMapSize || kanaMap[key] == "") {
-                    frame[cursor++] = ' ';
-                } else {
-                    const String kana = kanaMap[key];
-                    frame[cursor++] = static_cast<uint8_t>(kana[0]);
-                    if (cursor < 32 && kana.length() > 1 && (uint8_t)kana[1] == 222) {
-                        frame[cursor++] = static_cast<uint8_t>(kana[1]);
-                    }
-                }
+            // 非 ASCII 字符（含 UTF-8 多字节）跳过对应字节数
+            else if ((c0 & 0xE0) == 0xC0) {
+                // 2字节 UTF-8，跳过1个后续字节
+                if (i < fullLen) i++;
             }
+            else if ((c0 & 0xF0) == 0xE0) {
+                // 3字节 UTF-8，跳过2个后续字节
+                if (i + 1 < fullLen) i += 2;
+                else break;
+            }
+            else if ((c0 & 0xF8) == 0xF0) {
+                // 4字节 UTF-8，跳过3个后续字节
+                if (i + 2 < fullLen) i += 3;
+                else break;
+            }
+            // 其他情况忽略
         } 
 
         // 自定义字符
