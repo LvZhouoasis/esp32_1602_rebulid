@@ -51,7 +51,7 @@ static bool enqueueSound(const BuzzerQueueItem& item) {
     if (!buzzerQueue) return false;
     
     // 检查超时
-    uint32_t currentTime = millis();
+    uint32_t currentTime = GET_MS();
     if (currentTime - item.timestamp > BUZZER_TIMEOUT_MS) {
         return false;  // 超时，忽略请求
     }
@@ -66,7 +66,7 @@ static bool enqueueSound(const BuzzerQueueItem& item) {
 
 static void processQueueItem(const BuzzerQueueItem& item) {
     // 再次检查超时
-    uint32_t currentTime = millis();
+    uint32_t currentTime = GET_MS();
     if (currentTime - item.timestamp > BUZZER_TIMEOUT_MS) {
         return;  // 超时，跳过
     }
@@ -303,7 +303,7 @@ void buzzerBeep() {
         .frequency = 0,
         .duration = 0,
         .volume = buzzerVolume,
-        .timestamp = millis(),
+        .timestamp = GET_MS(),
         .melody = nullptr,
         .durations = nullptr,
         .melodyLength = 0
@@ -317,7 +317,7 @@ void buzzerDoubleBeep() {
         .frequency = 0,
         .duration = 0,
         .volume = buzzerVolume,
-        .timestamp = millis(),
+        .timestamp = GET_MS(),
         .melody = nullptr,
         .durations = nullptr,
         .melodyLength = 0
@@ -331,7 +331,7 @@ void buzzerPlaySuccess() {
         .frequency = 0,
         .duration = 0,
         .volume = buzzerVolume,
-        .timestamp = millis(),
+        .timestamp = GET_MS(),
         .melody = nullptr,
         .durations = nullptr,
         .melodyLength = 0
@@ -345,7 +345,7 @@ void buzzerPlayError() {
         .frequency = 0,
         .duration = 0,
         .volume = buzzerVolume,
-        .timestamp = millis(),
+        .timestamp = GET_MS(),
         .melody = nullptr,
         .durations = nullptr,
         .melodyLength = 0
@@ -359,7 +359,7 @@ void buzzerPlayWarning() {
         .frequency = 0,
         .duration = 0,
         .volume = buzzerVolume,
-        .timestamp = millis(),
+        .timestamp = GET_MS(),
         .melody = nullptr,
         .durations = nullptr,
         .melodyLength = 0
@@ -373,7 +373,7 @@ void buzzerPlayStartup() {
         .frequency = 0,
         .duration = 0,
         .volume = buzzerVolume,
-        .timestamp = millis(),
+        .timestamp = GET_MS(),
         .melody = nullptr,
         .durations = nullptr,
         .melodyLength = 0
@@ -387,7 +387,7 @@ void buzzerPlayClick() {
         .frequency = 0,
         .duration = 0,
         .volume = buzzerVolume,
-        .timestamp = millis(),
+        .timestamp = GET_MS(),
         .melody = nullptr,
         .durations = nullptr,
         .melodyLength = 0
@@ -401,7 +401,7 @@ void buzzerPlayBusy() {
         .frequency = 0,
         .duration = 0,
         .volume = buzzerVolume,
-        .timestamp = millis(),
+        .timestamp = GET_MS(),
         .melody = nullptr,
         .durations = nullptr,
         .melodyLength = 0
@@ -416,7 +416,7 @@ void buzzerPlayTone(uint16_t frequency, uint16_t duration, uint8_t volume) {
         .frequency = frequency,
         .duration = duration,
         .volume = vol,
-        .timestamp = millis(),
+        .timestamp = GET_MS(),
         .melody = nullptr,
         .durations = nullptr,
         .melodyLength = 0
@@ -430,7 +430,7 @@ void buzzerPlayMelody(const uint16_t* melody, const uint16_t* durations, uint16_
         .frequency = 0,
         .duration = 0,
         .volume = volume,
-        .timestamp = millis(),
+        .timestamp = GET_MS(),
         .melody = melody,
         .durations = durations,
         .melodyLength = length

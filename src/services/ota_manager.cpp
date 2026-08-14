@@ -18,7 +18,7 @@ bool otaDownloadFirmware(HTTPClient& http, size_t contentLength) {
     uint8_t buff[512];
     size_t written = 0;
     int lastDisplayedProgress = -1;
-    uint32_t lastProgressTime = millis();
+    uint32_t lastProgressTime = GET_MS();
     const uint32_t PROGRESS_UPDATE_INTERVAL = 50;
     
     while (http.connected() && written < contentLength) {
@@ -42,7 +42,7 @@ bool otaDownloadFirmware(HTTPClient& http, size_t contentLength) {
             written += currentSize;
             
             // 定期更新进度显示
-            uint32_t now = millis();
+            uint32_t now = GET_MS();
             if (now - lastProgressTime >= PROGRESS_UPDATE_INTERVAL) {
                 g_otaProgress = (written * 100) / contentLength;
                 if (g_otaProgress != lastDisplayedProgress) {
@@ -169,7 +169,7 @@ OTAResult otaUpdateFromURL(const String& url, bool useHTTPS) {
         g_otaProgress = 100;
         g_otaCurrentStatus = OTA_COMPLETED_SUCCESS;
         g_otaCurrentResult = OTA_SUCCESS;
-        delay(2000);
+        WAIT_MS(2000);
         ESP.restart();
         return OTA_SUCCESS;
     } else {

@@ -55,7 +55,7 @@ static bool _waitToggleConfirm(const char* itemName, bool currentEnabled) {
 	unsigned long pressStartMs = 0;
 
 	for (;;) {
-		const unsigned long now = millis();
+		const unsigned long now = GET_MS();
 		const bool centerPressed = (digitalRead(BUTTON_CENTER_PIN) == HIGH);
 
 		if (centerPressed && !centerLastState) {
@@ -162,7 +162,7 @@ void _toggleAutoBrightness() {
 	buzzerPlaySelectSound();
 	_showTogglePrompt("AutoBright", isEnabled);
 	LOG_SYSTEM_INFO("Auto brightness %s", isEnabled ? "enabled" : "disabled");
-	delay(500);
+	WAIT_MS(500);
 }
 
 void _toggleSoundEffects() {
@@ -181,7 +181,7 @@ void _toggleSoundEffects() {
 	}
 	_showTogglePrompt("SoundFX", enabled);
 	LOG_SYSTEM_INFO("Sound effects %s", enabled ? "enabled" : "disabled");
-	delay(500);
+	WAIT_MS(500);
 }
 
 void _resetWifi(){
@@ -191,7 +191,7 @@ void _resetWifi(){
 	lcdText("WiFi cleared", 1);
 	lcdText("Rebooting...", 2);
 	LOG_SYSTEM_INFO("WiFi config cleared, restarting...");
-	delay(800);
+	WAIT_MS(800);
 	ESP.restart();
 }
 
@@ -201,7 +201,7 @@ void _resetFuelGauge(){
 	lcdText("Fuel gauge reset", 1);
 	lcdText("Back to Menu", 2);
 	LOG_SYSTEM_INFO("Fuel gauge design capacity set to %d mAh", BATTERY_DESIGN_CAPACITY_MAH);
-	delay(500);
+	WAIT_MS(500);
 }
 
 void _setupWebSetting(){
@@ -215,7 +215,7 @@ void enterConnectInfoInterface(){
     // 展示当前 WiFi 连接信息，按中键返回（非阻塞）。
 	s_connectInfoScreen = ConnectInfoScreenState{};
 	s_connectInfoScreen.active = true;
-	s_connectInfoScreen.lastRefreshMs = millis() - 2000;
+	s_connectInfoScreen.lastRefreshMs = GET_MS() - 2000;
 	enterAppInterface(handleConnectInfoInterface, true);
 	globalButtonDelay(FIRST_TIME_DELAY);
 	_renderConnectInfoScreen();
@@ -226,7 +226,7 @@ void enterBatteryInfoInterface() {
     // 电池信息界面：周期刷新读数，按中键返回（非阻塞）。
 	s_batteryInfoScreen = BatteryInfoScreenState{};
 	s_batteryInfoScreen.active = true;
-	s_batteryInfoScreen.lastBatteryUpdate = millis() - 10000;
+	s_batteryInfoScreen.lastBatteryUpdate = GET_MS() - 10000;
 	enterAppInterface(handleBatteryInfoInterface, false);
 	globalButtonDelay(FIRST_TIME_DELAY);
 	_renderBatteryInfoScreen();
@@ -237,7 +237,7 @@ void _rebootSystem(){
 	lcdText("Rebooting...", 1);
 	lcdText("", 2);
 	LOG_SYSTEM_INFO("System rebooting...");
-	delay(400);
+	WAIT_MS(400);
 	ESP.restart();
 }
 
@@ -246,7 +246,7 @@ static void handleBrightnessInterface() {
 		return;
 	}
 
-	const unsigned long nowMs = millis();
+	const unsigned long nowMs = GET_MS();
 	if (s_brightnessScreen.exitPending) {
 		if ((long)(nowMs - s_brightnessScreen.exitAtMs) >= 0) {
 			s_brightnessScreen.active = false;

@@ -6,7 +6,7 @@ static unsigned long s_lastClockDisplayUpdate = 0;
 static unsigned long s_lastClockFailSoundMs = 0;
 
 static void _playClockFailSoundThrottled(unsigned long intervalMs = 2000) {
-    const unsigned long now = millis();
+    const unsigned long now = GET_MS();
     if (now - s_lastClockFailSoundMs < intervalMs) {
         return;
     }
@@ -48,10 +48,10 @@ void handleClockInterface() {
         return;
     }
 
-    if (millis() - s_lastClockDisplayUpdate > 1000 || s_clockIsNewInterface) {
+    if (GET_MS() - s_lastClockDisplayUpdate > 1000 || s_clockIsNewInterface) {
         s_clockIsNewInterface = false;
         updateClockScreen();
-        s_lastClockDisplayUpdate = millis();
+        s_lastClockDisplayUpdate = GET_MS();
     }
 }
 

@@ -190,13 +190,13 @@ void acceptClientIfNew() {
                 _cleanupClientStreamState();
                 clientConnected = true;
                 s_connectedCached = true;
-                s_lastConnectedCheckMs = millis();
+                s_lastConnectedCheckMs = GET_MS();
                 // 立即唤醒 WiFi：防止 sleep 模式在连接建立瞬间导致 RST
                 WiFi.setSleep(false);
                 // 低延迟：关闭 Nagle，减少小包合并带来的额外等待
                 client.setNoDelay(true);
                 updateColor(CRGB::Orange);      // RGB灯=黄色
-                lastClientActivity = millis();
+                lastClientActivity = GET_MS();
 
                 LOG_NETWORK_INFO("Socket Client connected from %s:%d",
                     client.remoteIP().toString().c_str(),
@@ -220,7 +220,7 @@ void receiveClientData() {
     int availableNow = 0;
     uint32_t nowMs = 0;
     if (clientMutex != nullptr && xSemaphoreTake(clientMutex, pdMS_TO_TICKS(25)) == pdTRUE) {
-        nowMs = millis();
+        nowMs = GET_MS();
         connectedNow = _checkClientConnectedLocked(nowMs);
         if (clientConnected) {
             availableNow = client.available();
@@ -297,7 +297,7 @@ void receiveClientData() {
                 }
 
                 recvBuffer.insert(recvBuffer.end(), buf, buf + len);    // 添加到接收缓存
-                lastClientActivity = millis();
+                lastClientActivity = GET_MS();
             } else if (len < 0) {
                 // read() 失败时 len 可能为 -1；若不处理会导致 buf + len 指针越界，进而破坏堆/网络栈
                 LOG_NETWORK_ERROR("Socket read failed (len=%d). Disconnecting client.", len);
@@ -337,7 +337,7 @@ void receiveClientData() {
                     recvHead += fullLen;
 
                     if (_isHeartbeatPacket(fullPacket)) {
-                        lastClientActivity = millis();
+                        lastClientActivity = GET_MS();
                         LOG_NETWORK_DEBUG("Heartbeat packet received.");
                     } 
                     else {
@@ -358,7 +358,7 @@ void receiveClientData() {
                             s_duplicateDisplayPackets++;
                             gFramesDropped++;
 
-                            const uint32_t nowMs = millis();
+                            const uint32_t nowMs = GET_MS();
                             if ((uint32_t)(nowMs - s_lastDuplicateLogMs) >= 2000) {
                                 LOG_NETWORK_INFO("Dropping duplicate display frames: %u", static_cast<unsigned int>(s_duplicateDisplayPackets));
                                 s_duplicateDisplayPackets = 0;
@@ -374,7 +374,7 @@ void receiveClientData() {
                             droppedInMenu++;
                             gFramesDropped++;
 
-                            const uint32_t nowMs = millis();
+                            const uint32_t nowMs = GET_MS();
                             if ((uint32_t)(nowMs - lastMenuDropLogMs) >= 2000) {
                                 LOG_NETWORK_INFO("Dropping stream frames in menu mode (count=%u)", static_cast<unsigned int>(droppedInMenu));
                                 droppedInMenu = 0;
@@ -387,7 +387,7 @@ void receiveClientData() {
 
                         // 一律入队，让显示侧消费；避免在收包路径直接渲染导致 TCP 缓冲被拖慢引发丢包/卡顿
                         // 对于“立即帧”(frameInterval=0)：只保留最新一帧，降低排队导致的显示滞后
-                        const uint32_t nowMs = millis();
+                        const uint32_t nowMs = GET_MS();
                         size_t droppedByReplace = 0;
 
                         if (frameInterval == 0) {
@@ -447,7 +447,7 @@ void receiveClientData() {
 
         // 超时断开连接
         const uint32_t timeoutLimitMs = s_clientHasReceivedPayload ? CONNECT_TIMEOUT_MS : kInitialClientSilentTimeoutMs;
-        if (millis() - lastClientActivity > timeoutLimitMs) {
+        if (GET_MS() - lastClientActivity > timeoutLimitMs) {
             const bool hadPayload = s_clientHasReceivedPayload;
             updateColor(CRGB::Green);
             if (clientMutex != nullptr && xSemaphoreTake(clientMutex, pdMS_TO_TICKS(50)) == pdTRUE) {

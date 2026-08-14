@@ -245,35 +245,35 @@ void lcdInit(){
     setOutput(LCD_CTL);
 
     // 等待 LCD 上电稳定，避免早期指令丢失导致初始化不完整（如光标闪烁未关闭）。
-    delay(50);
+    WAIT_MS(50);
 
     _gpioWrite(0x33,CMD);               // 强制 8-bit 初始化序列（兼容上电未知状态）
-    delay(5);
+    WAIT_MS(5);
     _gpioWrite(0x33,CMD);
-    delay(5);
+    WAIT_MS(5);
     _gpioWrite(0x32,CMD);               // 设置LCD切换为4位模式
-    delay(5);
+    WAIT_MS(5);
     _gpioWrite(0x28,CMD);               // 4-bit, 2-line, 5x8
-    delay(5);
+    WAIT_MS(5);
     _gpioWrite(0x08,CMD);               // 先关闭显示，避免初始化过程可见闪烁
-    delay(5);
+    WAIT_MS(5);
     _gpioWrite(0x01,CMD);               // 清屏并将地址指针归位
-    delay(5);
+    WAIT_MS(5);
     _gpioWrite(0x06,CMD);               // 设定向右写入字符，设置屏幕内容不滚动
-    delay(5);
+    WAIT_MS(5);
     _gpioWrite(0x0C,CMD);               // 开启显示，关闭光标显示，关闭光标闪烁
-    delay(5);
+    WAIT_MS(5);
 
     // 保险：再次写入显示控制，确保 C/B 位被明确清零。
     _gpioWrite(0x0C, CMD);
-    delay(2);
+    WAIT_MS(2);
 
     _initLcdBacklightPwm(0);           // 默认亮度 0
     _initLcdContrastPwm(96);         // 默认对比度 96
 
     for(int i=0;i<=26;i++){
         changeBrightness(10);           // 渐亮背光
-        delay(10);
+        WAIT_MS(10);
     }
 
     s_hwFrame.valid = false;

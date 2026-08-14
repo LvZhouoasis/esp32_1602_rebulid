@@ -81,7 +81,7 @@ void initButtonsPin(){
 // 扫描按键是否按下
 void scanButtonsTask(void *pvParameters) {
     while (!shouldExitTasks) {
-        unsigned long now = millis();
+        unsigned long now = GET_MS();
 
         for (int i = 0; i < buttonCount; ++i) {
             ButtonState& btn = buttons[i];
@@ -248,7 +248,7 @@ bool isButtonReadyToRespond(int buttonIndex, unsigned long minInterval) {
         return false;
     }
     
-    unsigned long currentTime = millis();
+    unsigned long currentTime = GET_MS();
     
     // 检查全局延迟
     if (currentTime < globalButtonDelayUntil) {
@@ -273,7 +273,7 @@ bool isButtonReadyToRespond(int buttonIndex, unsigned long minInterval) {
 
 // 重置按钮防抖计时器
 void resetButtonDebounce() {
-    unsigned long currentTime = millis();
+    unsigned long currentTime = GET_MS();
     for (int i = 0; i < buttonCount; i++) {
         lastButtonResponseTime[i] = currentTime;
         buttonJustPressed[i] = false;  // 清除所有按钮状态
@@ -282,6 +282,6 @@ void resetButtonDebounce() {
 
 // 全局按钮防抖等待
 void globalButtonDelay(unsigned long delayMs) {
-    globalButtonDelayUntil = millis() + delayMs;
+    globalButtonDelayUntil = GET_MS() + delayMs;
     resetButtonDebounce();
 }

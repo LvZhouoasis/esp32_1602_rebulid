@@ -20,7 +20,7 @@ void processIncoming(const uint8_t* raw, unsigned int fullLen) {
     //     LOG_DISPLAY_VERBOSE(" ");
     // }
 
-    const uint32_t now = millis();
+    const uint32_t now = GET_MS();
     if (lastStatsMs == 0) {
         lastStatsMs = now;
         lastEnqueued = gFramesEnqueued;
@@ -154,5 +154,5 @@ void processIncoming(const uint8_t* raw, unsigned int fullLen) {
     }
 
     // Serial.print("Process end:");
-    // Serial.println(millis());
+    // Serial.println(GET_MS());
 }

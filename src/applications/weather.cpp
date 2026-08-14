@@ -27,7 +27,7 @@ static void _exitWeatherToMenu(unsigned long delayMs = FIRST_TIME_DELAY) {
 }
 
 static void _playWeatherFailSoundThrottled(unsigned long intervalMs = 2500) {
-    const unsigned long now = millis();
+    const unsigned long now = GET_MS();
     if (now - s_lastWeatherFailSoundMs < intervalMs) {
         return;
     }
@@ -86,18 +86,18 @@ void handleWeatherInterface() {
     }
 
     // 每隔10分钟更新一次天气数据
-    if (!s_weatherReadyToDisplay || millis() - lastWeatherUpdate > 10 * 60 * 1000) {
-        if (millis() - s_lastWeatherFail > 15 * 1000) { // 失败后15秒再试
+    if (!s_weatherReadyToDisplay || GET_MS() - lastWeatherUpdate > 10 * 60 * 1000) {
+        if (GET_MS() - s_lastWeatherFail > 15 * 1000) { // 失败后15秒再试
             loadJwtConfig();
             LOG_WEATHER_INFO("Fetching weather data...");
             if (fetchWeatherData()) {
                 s_weatherReadyToDisplay = true;
-                lastWeatherUpdate = millis();
+                lastWeatherUpdate = GET_MS();
             } else {
                 LOG_WEATHER_WARN("Failed to fetch weather data");
                 _playWeatherFailSoundThrottled(4000);
                 s_weatherReadyToDisplay = false;
-                s_lastWeatherFail = millis();
+                s_lastWeatherFail = GET_MS();
                 _exitWeatherToMenu();
                 return;
             }
@@ -203,7 +203,7 @@ bool fetchWeatherData() {
         lcdText("No API config", 1);
         lcdText("Use web config", 2);
         _playWeatherFailSoundThrottled();
-        delay(1000);
+        WAIT_MS(1000);
         return false;
     }
 
@@ -213,7 +213,7 @@ bool fetchWeatherData() {
         lcdText("No City Set", 1);
         lcdText("Use Web Config", 2);
         _playWeatherFailSoundThrottled();
-        delay(1000);
+        WAIT_MS(1000);
         return false;
     }
 
@@ -274,17 +274,17 @@ bool fetchWeatherData() {
 
     // 读取数据到缓冲区
     WiFiClient *stream = http.getStreamPtr();
-    long startMillis = millis();
+    long startMillis = GET_MS();
     int iCount = 0;                 // 已读取字节数
 
-    while (iCount < payloadSize && (millis() - startMillis) < 4000) {   // 最多等待4秒
+    while (iCount < payloadSize && (GET_MS() - startMillis) < 4000) {   // 最多等待4秒
         if (stream->available()) {
             compressedBuffer.get()[iCount++] = stream->read();
         } else {
             vTaskDelay(5);  // 延迟以避免占用过多资源
         }
     }
-    if((millis() - startMillis) >= 4000){
+    if((GET_MS() - startMillis) >= 4000){
         LOG_WEATHER_ERROR("Read timeout");
         lcdText("Read timeout", 1);
         lcdText("", 2);
@@ -411,7 +411,7 @@ bool fetchWeatherData() {
     }
     
     weatherSynced = true;
-    lastWeatherUpdate = millis();
+    lastWeatherUpdate = GET_MS();
 
     // 打印内存使用情况
     MemoryManager::printMemoryInfo("Weather fetch complete");

@@ -24,7 +24,7 @@ static inline bool _isWiFiReadyForTimeSync() {
 void initTime(bool isSleepWakeup) {
     // 启用外部32.768kHz晶振
     rtc_clk_32k_enable(true);
-    delay(100);  // 等待晶振稳定
+    WAIT_MS(100);  // 等待晶振稳定
     
     // 设置RTC慢时钟源为外部晶振
     rtc_clk_slow_freq_set(RTC_SLOW_FREQ_32K_XTAL);
@@ -125,8 +125,8 @@ void initNtpTimeSync() {
     // 这样系统时间直接存储为本地时间（UTC+8），无需额外时区转换
     configTime(GMT_OFFSET_HOUR * 3600, 0, "ntp.aliyun.com", "ntp1.aliyun.com", "ntp.ntsc.ac.cn");
     timeSyncState = TIME_SYNC_IN_PROGRESS;
-    timeSyncStartTime = millis();
-    lastTimeSyncAttempt = millis();
+    timeSyncStartTime = GET_MS();
+    lastTimeSyncAttempt = GET_MS();
     LOG_TIME_DEBUG("NTP servers configured, waiting for response...");
 }
 
@@ -137,7 +137,7 @@ void updateTimeSync() {
         return;
     }
     
-    unsigned long now = millis();
+    unsigned long now = GET_MS();
     
     // 检查超时
     if (now - timeSyncStartTime > TIME_SYNC_TIMEOUT) {
@@ -183,7 +183,7 @@ void timeSyncTask(void* parameter) {
     
     while (!shouldExitTasks) {
         const bool wifiReady = _isWiFiReadyForTimeSync();
-        const unsigned long now = millis();
+        const unsigned long now = GET_MS();
 
         if (!wifiReady) {
             // 掉线后恢复到空闲，等待重连后再发起同步。

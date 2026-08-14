@@ -143,7 +143,7 @@ bool appHandleLeftRightStep(int& value,
 }
 
 bool appShouldRunPeriodic(unsigned long& lastRunMs, unsigned long intervalMs) {
-    const unsigned long nowMs = millis();
+    const unsigned long nowMs = GET_MS();
     if (intervalMs == 0 || (uint32_t)(nowMs - lastRunMs) >= intervalMs) {
         lastRunMs = nowMs;
         return true;

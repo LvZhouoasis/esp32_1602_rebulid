@@ -79,7 +79,7 @@ bool ConfigManager::writeFile(const String& configContent) {
     if(SPIFFS.exists(configFilePath)) {
         LOG_CONFIG_DEBUG("Removing existing file: %s", configFilePath.c_str());
         SPIFFS.remove(configFilePath);
-        delay(50);  // 等待Flash完成删除操作
+        WAIT_MS(50);  // 等待Flash完成删除操作
     }
 
     File file = SPIFFS.open(configFilePath, "w", true);  // create if not exists
@@ -93,7 +93,7 @@ bool ConfigManager::writeFile(const String& configContent) {
     file.flush();  // 确保数据完全写入Flash
     file.close();
     
-    delay(100);  // 等待Flash完成写入操作
+    WAIT_MS(100);  // 等待Flash完成写入操作
 
     if (written != configContent.length()) {
         lastError = Error::WriteError;
@@ -184,7 +184,7 @@ bool ConfigManager::initSPIFFS() {
             return false;
         }
         
-        delay(100);  // 等待Flash完成格式化
+        WAIT_MS(100);  // 等待Flash完成格式化
         
         // 重新挂载
         if (!SPIFFS.begin(false)) {

@@ -85,7 +85,7 @@ namespace Animations {
     void registerAnimation(IconAnimation& animation) {
         // 实现注册动画的逻辑
         animation.currentFrame = 0;
-        animation.lastUpdate = millis();
+        animation.lastUpdate = GET_MS();
         animation.enabled = false;
     }
 
@@ -110,7 +110,7 @@ namespace Animations {
     }
 
     void update() {
-        unsigned long currentMillis = millis();
+        unsigned long currentMillis = GET_MS();
         for (uint8_t i = 0; i < s_animCount; ++i) {
             IconAnimation* anim = s_anims[i];
             if (anim->enabled) {

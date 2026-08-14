@@ -108,22 +108,22 @@ void statusBarRendererInit() {
     s_cachedBatterySOC = readStateOfCharge();
     s_cachedCurrentBattery_mA = readAverageCurrent();
     s_cachedBatteryVoltage_mV = readVoltage();
-    s_lastBatteryReadMs = millis();
+    s_lastBatteryReadMs = GET_MS();
 
     s_lastWiFiState = wifiConnectionState;
     s_lastTimeSyncState = timeSyncState;
-    s_lastTimePollMs = millis();
-    s_lastAnimationUpdateMs = millis();
+    s_lastTimePollMs = GET_MS();
+    s_lastAnimationUpdateMs = GET_MS();
     _syncAnimationEnableStates();
     s_needsRedraw = true;
 }
 
 void statusBarRendererTick() {
-    const unsigned long nowMs = millis();
+    const unsigned long nowMs = GET_MS();
 
     _syncAnimationEnableStates();
 
-    if (millis() - s_lastBatteryReadMs > BATTERY_READ_INTERVAL_MS) {
+    if (GET_MS() - s_lastBatteryReadMs > BATTERY_READ_INTERVAL_MS) {
         s_cachedBatterySOC = readStateOfCharge();
         s_cachedCurrentBattery_mA = readAverageCurrent();
         s_cachedBatteryVoltage_mV = readVoltage();
@@ -155,7 +155,7 @@ bool statusBarRendererNeedsRedraw() {
         changed = true;
     }
 
-    const unsigned long nowMs = millis();
+    const unsigned long nowMs = GET_MS();
     if (timeSyncState == TIME_SYNC_SUCCESS && (nowMs - s_lastTimePollMs >= 1000)) {
         s_lastTimePollMs = nowMs;
         getLocalTime(&localTimeInfo);
@@ -225,10 +225,10 @@ void renderStatusBar() {
                 static int lastUnknownWiFiState = -1;
                 static unsigned long lastUnknownWiFiLogMs = 0;
                 int stateVal = (int)wifiConnectionState;
-                if (stateVal != lastUnknownWiFiState && millis() - lastUnknownWiFiLogMs > 1000) {
+                if (stateVal != lastUnknownWiFiState && GET_MS() - lastUnknownWiFiLogMs > 1000) {
                     LOG_MENU_WARN("Unknown wifiConnectionState=%d", stateVal);
                     lastUnknownWiFiState = stateVal;
-                    lastUnknownWiFiLogMs = millis();
+                    lastUnknownWiFiLogMs = GET_MS();
                 }
                 lcdCreateCharAuto(s_wronganim->frames[s_wronganim->currentFrame]);
                 lcdPrint(" ");

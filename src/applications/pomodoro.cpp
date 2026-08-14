@@ -84,7 +84,7 @@ static void _resetPomodoroState() {
 void enterPomodoroInterface() {
     _resetPomodoroState();
     s_pomo.active = true;
-    s_pomo.phaseStartMs = millis();
+    s_pomo.phaseStartMs = GET_MS();
     enterAppInterface(handlePomodoroInterface, false);
     globalButtonDelay(FIRST_TIME_DELAY);
     LOG_SYSTEM_INFO("Pomodoro app started");
@@ -95,7 +95,7 @@ void handlePomodoroInterface() {
         return;
     }
 
-    const unsigned long nowMs = millis();
+    const unsigned long nowMs = GET_MS();
 
     const bool centerState = buttonJustPressed[CENTER];
     if (centerState && !s_pomo.centerLastState) {
@@ -183,7 +183,7 @@ void handlePomodoroInterface() {
         s_pomo.isWorkPhase = !s_pomo.isWorkPhase;
         s_pomo.phaseDurationSec = s_pomo.isWorkPhase ? kWorkSeconds : kBreakSeconds;
         alertPhaseSwitch(s_pomo.isWorkPhase);
-        s_pomo.phaseStartMs = millis();
+        s_pomo.phaseStartMs = GET_MS();
         s_pomo.lastRenderedRemain = UINT32_MAX;
         return;
     }

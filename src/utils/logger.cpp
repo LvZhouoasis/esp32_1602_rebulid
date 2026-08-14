@@ -1,4 +1,5 @@
 #include "./utils/logger.h"
+#include <esp_timer.h>
 
 // 静态成员变量定义
 LogLevel Logger::globalLogLevel = LOG_LEVEL_INFO;
@@ -51,8 +52,8 @@ void Logger::init(LogLevel defaultLevel) {
     logMutex = xSemaphoreCreateMutex();
     
     Serial.begin(115200);
-    while (!Serial && millis() < 3000) {
-        delay(10);
+    while (!Serial && GET_MS() < 3000) {
+        WAIT_MS(10);
     }
     
     Serial.println();
@@ -101,7 +102,7 @@ bool Logger::shouldLog(LogModule module, LogLevel level) {
 }
 
 void Logger::printTimestamp() {
-    unsigned long now = millis();
+    unsigned long now = GET_MS();
     unsigned long seconds = now / 1000;
     unsigned long milliseconds = now % 1000;
     

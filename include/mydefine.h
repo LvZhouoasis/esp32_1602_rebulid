@@ -2,6 +2,19 @@
 #define MYDEFINE_H
 
 #include <Arduino.h>
+#include <esp_timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+
+// ==============================
+// ESP-IDF 时间工具宏（替代 Arduino millis/delay）
+// ==============================
+
+/// 获取当前毫秒数（替代 millis()）
+#define GET_MS() ((uint32_t)(esp_timer_get_time() / 1000))
+
+/// 毫秒级延时（替代 delay(ms)），让出 CPU 给其他任务
+#define WAIT_MS(ms) vTaskDelay(pdMS_TO_TICKS(ms))
 
 /**
  * @brief 将指定 GPIO 引脚配置为输出模式

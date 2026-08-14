@@ -218,7 +218,7 @@ void fatalError(const char* msg){
             fadeStep = -fadeStep;
         }
         updateBrightness(brightness);
-        delay(5);
+        WAIT_MS(5);
     };
 }
 
@@ -265,7 +265,7 @@ void setup() {
     lcdReconfigPwmForLightSleep();  // 将 LEDC timer 切换至 RC_FAST 时钟，防止 light sleep 期间背光闪烁
     
     buzzerInit();
-    delay(500);
+    WAIT_MS(500);
     initBQ27421(BATTERY_DESIGN_CAPACITY_MAH);  // 初始化燃料计芯片
     initOPT3001();  // 初始化光传感器 OPT3001
     
@@ -356,7 +356,7 @@ void loop(){
         apServer.handleClient();
         // 配网完成后延迟重启（不在回调中直接调用，避免 WiFi 事件卡死）
         if (pendingRestart) {
-            delay(500);
+            WAIT_MS(500);
             ESP.restart();
         }
     }
@@ -368,7 +368,7 @@ void loop(){
 
     // WiFi 状态自愈：在少数情况下可能出现“已拿到 IP 但 WiFi.status() 尚未更新为 WL_CONNECTED”的瞬间
     // 这里以 localIP!=0.0.0.0 作为更可靠的“已联通”信号，避免误判触发重连并把状态错误置为 DISCONNECTED
-    const unsigned long nowMs = millis();
+    const unsigned long nowMs = GET_MS();
     const bool hasIp = (WiFi.localIP() != IPAddress(0, 0, 0, 0));
     const bool isStaConnected = (WiFi.status() == WL_CONNECTED);
     static unsigned long lastWiFiReconnectAttemptMs = 0;

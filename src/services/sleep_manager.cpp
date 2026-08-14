@@ -69,13 +69,13 @@ void enterDeepSleep() {
         LOG_SLEEP_DEBUG("Disconnecting WiFi...");
         WiFi.disconnect(true);  // true = 关闭WiFi射频
         WiFi.mode(WIFI_OFF);
-        delay(100);  // 等待WiFi完全断开
+        WAIT_MS(100);  // 等待WiFi完全断开
     }
     
     // 渐暗背光
     for (int i = 0; i < 256; i++) {
         changeBrightness(-10);
-        delay(10);
+        WAIT_MS(10);
     }
     updateBrightness(0);
 
@@ -98,7 +98,7 @@ void enterDeepSleep() {
     // 先释放GPIO hold并配置下拉
     gpio_hold_dis((gpio_num_t)BUTTON_POWER_PIN);  // 释放可能的锁定状态
     gpio_pulldown_en((gpio_num_t)BUTTON_POWER_PIN); // 启用内部下拉
-    delay(10);  // 等待下拉稳定
+    WAIT_MS(10);  // 等待下拉稳定
     
     // 检查电源键状态，确保为低电平（未按下）
     int pin_state = gpio_get_level((gpio_num_t)BUTTON_POWER_PIN);
@@ -108,9 +108,9 @@ void enterDeepSleep() {
         LOG_SLEEP_WARN("Button is pressed, waiting for release...");
         // 等待按钮释放
         while (gpio_get_level((gpio_num_t)BUTTON_POWER_PIN) == 1) {
-            delay(50);
+            WAIT_MS(50);
         }
-        delay(100);  // 去抖动
+        WAIT_MS(100);  // 去抖动
         LOG_SLEEP_DEBUG("Button released");
     }
     
@@ -121,7 +121,7 @@ void enterDeepSleep() {
     gpio_hold_en((gpio_num_t)BUTTON_POWER_PIN);   // 锁定配置
 
     LOG_SLEEP_INFO("Entering deep sleep...");
-    delay(100);  // 确保日志输出完成和所有任务停止
+    WAIT_MS(100);  // 确保日志输出完成和所有任务停止
     
     // 刷新串口缓冲区
     Serial.flush();

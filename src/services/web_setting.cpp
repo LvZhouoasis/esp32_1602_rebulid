@@ -47,7 +47,7 @@ void webSettingHandleCitySearchReady() {
 }
 
 void webSettingHandleDeviceBasicInfo() {
-    const unsigned long uptimeMs = millis();
+    const unsigned long uptimeMs = GET_MS();
     const size_t freeHeap = ESP.getFreeHeap();
     const size_t totalHeap = ESP.getHeapSize();
     const size_t freePsram = ESP.getFreePsram();
@@ -354,7 +354,7 @@ void webSettingHandleOTAUpload() {
             
             // 创建后台重启任务，等待结束响应发送完成
             xTaskCreate([](void*){
-                delay(2000); 
+                WAIT_MS(2000); 
                 ESP.restart();
             }, "Restart_Task", 2048, NULL, 1, NULL);
         } 
@@ -536,9 +536,9 @@ String fetchCitySearchResult(String& location) {
     }
     
     WiFiClient *stream = http.getStreamPtr();
-    long startMillis = millis();
+    long startMillis = GET_MS();
     int iCount = 0;
-    while (iCount < payloadSize && (millis() - startMillis) < 4000) {
+    while (iCount < payloadSize && (GET_MS() - startMillis) < 4000) {
         if (stream->available()) {
             compressedBuffer.get()[iCount++] = stream->read();
         } else {
@@ -731,7 +731,7 @@ void webSettingSetupWebServer() {
         LOG_SYSTEM_WARN("Web setting server setup called but WiFi not connected");
         lcdText("WiFi Not Conn", 1);
         lcdText(" ", 2);
-        delay(1000);
+        WAIT_MS(1000);
         return;
     }
 
@@ -798,10 +798,10 @@ void webSettingSetupWebServer() {
     lcdText(ipAddress.c_str(), 2);
     while(isConfigDone == false){
         settingServer.handleClient();
-        delay(1);
+        WAIT_MS(1);
     }
 
     lcdText("Config Done", 1);
     lcdText("Exiting...", 2);
-    delay(500);
+    WAIT_MS(500);
 }

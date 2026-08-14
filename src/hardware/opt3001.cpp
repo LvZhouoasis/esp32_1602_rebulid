@@ -120,7 +120,7 @@ void initOPT3001() {
     configureOPT3001(CONFIG_DEFAULT);
     
     // 等待首次转换完成
-    delay(850);  // 等待超过800ms
+    WAIT_MS(850);  // 等待超过800ms
     
     // 初始化完成，标记设备已连接
     isOPT3001Connected = true;
@@ -130,7 +130,7 @@ void initOPT3001() {
 
 void configureOPT3001(uint16_t configValue) {
     _writeOPT3001Register(REG_OPT_CONFIG, configValue);
-    delay(10);
+    WAIT_MS(10);
     
     // 读回配置验证
     uint16_t readBack = _readOPT3001Register(REG_OPT_CONFIG);

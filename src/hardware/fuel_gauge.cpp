@@ -8,7 +8,7 @@ bool _isBQ27421Present() {
         Wire.beginTransmission(BQ27421_I2C_ADDR);
         uint8_t error = Wire.endTransmission();
         if (error == 0) return true;  // 0 = 成功
-        delay(5);
+        WAIT_MS(5);
     }
     return false;
 }
@@ -73,31 +73,31 @@ void readFuelGaugeStatus() {
 
     // 读取 CONTROL_STATUS
     _writeBQ27421Register(REG_CONTROL, CMD_CONTROL_STATUS);
-    delay(5);
+    WAIT_MS(5);
     uint16_t controlStatus = _readBQ27421Register(REG_CONTROL);
     LOG_BATTERY_DEBUG("CONTROL_STATUS: 0x%04X", controlStatus);
 
     // 读取 DEVICE_TYPE
     _writeBQ27421Register(REG_CONTROL, CMD_DEVICE_TYPE);
-    delay(5);
+    WAIT_MS(5);
     uint16_t deviceType = _readBQ27421Register(REG_CONTROL);
     LOG_BATTERY_DEBUG("DEVICE_TYPE: 0x%04X", deviceType);
 
     // 读取 FW_VERSION
     _writeBQ27421Register(REG_CONTROL, CMD_FW_VERSION);
-    delay(5);
+    WAIT_MS(5);
     uint16_t fwVersion = _readBQ27421Register(REG_CONTROL);
     LOG_BATTERY_DEBUG("FW_VERSION: 0x%04X", fwVersion);
 
     // 读取 DM_CODE
     _writeBQ27421Register(REG_CONTROL, CMD_DM_CODE);
-    delay(5);
+    WAIT_MS(5);
     uint16_t dmCode = _readBQ27421Register(REG_CONTROL);
     LOG_BATTERY_DEBUG("DM_CODE: 0x%04X", dmCode);
 
     // 读取 CHEM_ID
     _writeBQ27421Register(REG_CONTROL, CMD_CHEM_ID);
-    delay(5);
+    WAIT_MS(5);
     uint16_t chemId = _readBQ27421Register(REG_CONTROL);
     LOG_BATTERY_DEBUG("CHEM_ID: 0x%04X", chemId);
 }
@@ -109,7 +109,7 @@ void initBQ27421(uint16_t designCapacity_mAh) {
     // 尝试初始化I2C（如果已初始化则不会重复）
     // 注意：如果OPT3001已经初始化了I2C，这里会返回false但I2C仍然可用
     Wire.begin(SDA_PIN, SCL_PIN);
-    delay(10);  // 等待I2C稳定
+    WAIT_MS(10);  // 等待I2C稳定
     LOG_BATTERY_DEBUG("I2C bus ready for BQ27421");
 
     // 检查设备是否存在
@@ -121,7 +121,7 @@ void initBQ27421(uint16_t designCapacity_mAh) {
 
     // 额外验证 DEVICE_TYPE，防止伪ACK误判（BQ27421应返回 0x0421）
     _writeBQ27421Register(REG_CONTROL, CMD_DEVICE_TYPE);
-    delay(5);
+    WAIT_MS(5);
     uint16_t deviceType = _readBQ27421Register(REG_CONTROL);
     if (deviceType != 0x0421) {
         LOG_BATTERY_ERROR("BQ27421 DEVICE_TYPE mismatch: 0x%04X (expected 0x0421), skip init", deviceType);
@@ -156,19 +156,19 @@ void setBQ27421DesignCapacity(uint16_t designCapacity_mAh) {
     // 1. 解封芯片 (Unseal)
     LOG_BATTERY_DEBUG("Unsealing BQ27421...");
     _writeBQ27421Register(REG_CONTROL, CMD_UNSEAL);
-    delay(10);
+    WAIT_MS(10);
     _writeBQ27421Register(REG_CONTROL, CMD_UNSEAL);
-    delay(10);
+    WAIT_MS(10);
 
     // 2. 进入配置更新模式
     LOG_BATTERY_DEBUG("Entering CONFIG UPDATE mode...");
     _writeBQ27421Register(REG_CONTROL, CMD_SET_CFGUPDATE);
-    delay(50);  // 等待芯片响应CONFIG UPDATE命令
+    WAIT_MS(50);  // 等待芯片响应CONFIG UPDATE命令
     
     // 等待进入配置更新模式 (检查CFGUPMODE标志)
     uint16_t timeout = 0;
     while (!(_readBQ27421Register(REG_FLAGS) & FLAG_CFGUPMODE)) {
-        delay(10);
+        WAIT_MS(10);
         if (timeout++ > 100) {  // 1秒超时
             LOG_BATTERY_ERROR("Timeout entering CONFIG UPDATE mode");
             return;
@@ -178,11 +178,11 @@ void setBQ27421DesignCapacity(uint16_t designCapacity_mAh) {
 
     // 3. 访问 State of Health 数据块
     _writeBQ27421Byte(REG_BLOCK_DATA_CTRL, 0x00);  // 启用块数据访问
-    delay(1);
+    WAIT_MS(1);
     _writeBQ27421Byte(REG_DATA_CLASS, DATA_CLASS_STATE);  // 选择数据类82
-    delay(1);
+    WAIT_MS(1);
     _writeBQ27421Byte(REG_DATA_BLOCK, 0x00);  // 选择数据块0
-    delay(10);  // 等待数据加载
+    WAIT_MS(10);  // 等待数据加载
 
     // 4. 读取原始 BlockData (32字节)
     uint8_t blockData[32];
@@ -225,7 +225,7 @@ void setBQ27421DesignCapacity(uint16_t designCapacity_mAh) {
     for (int i = 0; i < 32; i++) {
         _writeBQ27421Byte(REG_BLOCK_DATA + i, blockData[i]);
     }
-    delay(1);
+    WAIT_MS(1);
 
     // 7. 计算并写入新校验和
     uint32_t tempSum = 0;
@@ -235,15 +235,15 @@ void setBQ27421DesignCapacity(uint16_t designCapacity_mAh) {
     uint8_t newChecksum = (uint8_t)(255 - (tempSum % 256));
     _writeBQ27421Byte(REG_CHECKSUM, newChecksum);
     LOG_BATTERY_DEBUG("New checksum: 0x%02X", newChecksum);
-    delay(10);
+    WAIT_MS(10);
 
     // 8. 验证写入 (读回Design Capacity确认)
     _writeBQ27421Byte(REG_BLOCK_DATA_CTRL, 0x00);
-    delay(1);
+    WAIT_MS(1);
     _writeBQ27421Byte(REG_DATA_CLASS, DATA_CLASS_STATE);
-    delay(1);
+    WAIT_MS(1);
     _writeBQ27421Byte(REG_DATA_BLOCK, 0x00);
-    delay(10);
+    WAIT_MS(10);
     
     uint16_t verifyCapacity = (_readBQ27421Byte(REG_BLOCK_DATA + OFFSET_DESIGN_CAPACITY) << 8) | 
                               _readBQ27421Byte(REG_BLOCK_DATA + OFFSET_DESIGN_CAPACITY + 1);
@@ -261,7 +261,7 @@ void setBQ27421DesignCapacity(uint16_t designCapacity_mAh) {
     // 等待退出配置更新模式
     timeout = 0;
     while (_readBQ27421Register(REG_FLAGS) & FLAG_CFGUPMODE) {
-        delay(10);
+        WAIT_MS(10);
         if (timeout++ > 100) {  // 1秒超时
             LOG_BATTERY_ERROR("Timeout exiting CONFIG UPDATE mode");
             return;
@@ -270,12 +270,12 @@ void setBQ27421DesignCapacity(uint16_t designCapacity_mAh) {
     LOG_BATTERY_DEBUG("Exited CONFIG UPDATE mode");
     
     // 10. 等待设备稳定
-    delay(100);
+    WAIT_MS(100);
 
     // 11. 启用阻抗跟踪算法
     LOG_BATTERY_DEBUG("Enabling Impedance Track...");
     _writeBQ27421Register(REG_CONTROL, CMD_IT_ENABLE);
-    delay(10);
+    WAIT_MS(10);
     
     // 验证IT状态 (ITPOR=0表示IT正在运行, ITPOR=1表示需要学习周期)
     uint16_t flags = _readBQ27421Register(REG_FLAGS);
@@ -290,17 +290,17 @@ void setBQ27421DesignCapacity(uint16_t designCapacity_mAh) {
     // 12. 软复位燃料计以应用新配置
     LOG_BATTERY_DEBUG("Performing soft reset...");
     _writeBQ27421Register(REG_CONTROL, CMD_SOFT_RESET);
-    delay(1000);  // 等待复位完成
+    WAIT_MS(1000);  // 等待复位完成
     LOG_BATTERY_DEBUG("Soft reset completed");
 
     // 13. 重新密封设备 (保护配置不被意外修改)
     LOG_BATTERY_DEBUG("Sealing BQ27421...");
     _writeBQ27421Register(REG_CONTROL, CMD_SEAL);
-    delay(10);
+    WAIT_MS(10);
     
     // 验证SEAL状态 (读取Control Status)
     _writeBQ27421Register(REG_CONTROL, CMD_CONTROL_STATUS);
-    delay(5);
+    WAIT_MS(5);
     uint16_t controlStatus = _readBQ27421Register(REG_CONTROL);
     LOG_BATTERY_DEBUG("Control Status after seal: 0x%04X", controlStatus);
     

@@ -208,13 +208,13 @@ void wifiConnectTask(void* parameter) {
 	
 	WiFi.begin(wifiConfigManager.getSSID().c_str(), wifiConfigManager.getPassword().c_str());
 	
-	unsigned long startTime = millis();
+	unsigned long startTime = GET_MS();
 	int fadeStep = 2;
 	uint8_t brightness = 64;
 	
 	// 连接中蓝灯闪烁
 	uint32_t lastDotMs = 0;
-	while (millis() - startTime < 15000 && !shouldExitTasks && !inConfigMode) {
+	while (GET_MS() - startTime < 15000 && !shouldExitTasks && !inConfigMode) {
 		const IPAddress ipNow = WiFi.localIP();
 		if (WiFi.status() == WL_CONNECTED || ipNow != IPAddress(0, 0, 0, 0)) {
 			break;
@@ -226,7 +226,7 @@ void wifiConnectTask(void* parameter) {
 				fadeStep = -fadeStep;
 		}
 
-		const uint32_t nowMs = millis();
+		const uint32_t nowMs = GET_MS();
 		if ((uint32_t)(nowMs - lastDotMs) >= 500) {
 			lastDotMs = nowMs;
 			LOG_WIFI_DEBUG(".");
@@ -256,9 +256,9 @@ void wifiConnectTask(void* parameter) {
 		updateBrightness(10);
 		
 		// 等待 DHCP 分配到有效 IP
-		unsigned long ipWaitStart = millis();
+		unsigned long ipWaitStart = GET_MS();
 		IPAddress ip = WiFi.localIP();
-		while (ip == IPAddress(0, 0, 0, 0) && (millis() - ipWaitStart) < 5000 && !shouldExitTasks) {
+		while (ip == IPAddress(0, 0, 0, 0) && (GET_MS() - ipWaitStart) < 5000 && !shouldExitTasks) {
 			vTaskDelay(pdMS_TO_TICKS(50));
 			ip = WiFi.localIP();
 		}

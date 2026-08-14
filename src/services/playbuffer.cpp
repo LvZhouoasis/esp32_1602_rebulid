@@ -20,7 +20,7 @@ static uint32_t s_latMaxTotalUs = 0;  // 最大端到端延迟 (T2→T4)
 static constexpr uint32_t kLatencyLogInterval = 300; // 每 300 帧输出一次汇总
 
 static void _measureAndDisplay(const FramePacket& pkt) {
-    const uint32_t now = millis();
+    const uint32_t now = GET_MS();
     const uint32_t queueMs = (uint32_t)(now - pkt.enqueueMs);
 
     const int64_t t3 = esp_timer_get_time();
@@ -57,7 +57,7 @@ void tryDisplayCachedFrames() {
         return;
     }
 
-    unsigned long now = millis();
+    unsigned long now = GET_MS();
 
     // 丢弃过期帧（仅 MAX_LATENCY_MS 一道防线，不再按队列深度跳帧）
     while (!frameCache.empty() && (uint32_t)(now - frameCache.front().enqueueMs) > (uint32_t)MAX_LATENCY_MS) {
@@ -110,7 +110,7 @@ void tryDisplayCachedFrames() {
         displayedThisTick++;
 
         // 刷新当前时刻，避免连续渲染时使用过旧的时间戳。
-        now = millis();
+        now = GET_MS();
     }
 
     if (displayedThisTick > 1) {
