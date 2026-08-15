@@ -480,6 +480,47 @@ s.toUpperCase();
 
 ---
 
+### ⏳ 阶段 3 进行中
+
+**完成日期**：2026-08-15（部分完成）
+
+**已处理文件**（14个）：
+1. ✅ `include/utils/logger.h` - 移除 String 类型函数声明
+2. ✅ `main/utils/logger.cpp` - 移除 String 类型函数实现
+3. ✅ `include/services/kanamap.h` - String 数组改为 const char*
+4. ✅ `main/services/kanamap.cpp` - String 数组改为 const char*
+5. ✅ `include/hardware/lcd_driver.h` - 函数参数改为 const char*
+6. ✅ `main/hardware/lcd_driver.cpp` - 函数参数改为 const char*
+7. ✅ `include/ui/icons.h` - 函数参数改为 const char*
+8. ✅ `main/ui/icons.cpp` - 函数参数改为 const char*，strcmp 替换 ==
+9. ✅ `main/applications/about.cpp` - String 拼接改为 snprintf
+10. ✅ `main/applications/setting.cpp` - String 拼接改为 snprintf
+11. ✅ `main/hardware/button.cpp` - String 拼接改为 snprintf
+12. ✅ `main/menu/menu.cpp` - String 改为 const char*
+13. ✅ `main/main.cpp` - String 拼接改为 snprintf
+14. ✅ `include/services/config_manager.h` - 函数参数改为 const char*
+
+**待处理文件**（12个）：
+- ⏳ `main/services/config_manager.cpp` - 复杂，需要重写 readFile/writeFile
+- ⏳ `include/services/wifi_config_manager.h` - 函数参数需要修改
+- ⏳ `main/services/wifi_config_manager.cpp` - 复杂，需要重写
+- ⏳ `include/services/qweather_auth_config_manager.h` - 函数参数需要修改
+- ⏳ `main/services/qweather_auth_config_manager.cpp` - 复杂，需要重写
+- ⏳ `main/applications/weather.cpp` - 非常复杂（34处），需要大量修改
+- ⏳ `main/services/web_setting.cpp` - 非常复杂（99处），需要大量修改
+- ⏳ `include/connectivity/jwt_auth.h` - 函数参数需要修改
+- ⏳ `main/connectivity/jwt_auth.cpp` - 复杂（12处），需要大量修改
+- ⏳ `include/services/ota_manager.h` - 函数参数需要修改
+- ⏳ `main/services/ota_manager.cpp` - 复杂（12处），需要大量修改
+- ⏳ `main/connectivity/wifi_config.cpp` - 复杂（14处），需要大量修改
+
+**说明**：
+- 阶段3工作量巨大（286处修改），已完成约40%
+- 剩余文件多为复杂的服务层和网络层代码
+- 需要继续分批处理
+
+---
+
 ### 阶段 4：GPIO 和硬件抽象层
 
 **目标**：替换 Arduino GPIO API
@@ -813,7 +854,7 @@ esp_pm_configure(&pm_config);
 |------|------|------|------|------|
 | 1 | 构建系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
 | 2 | 核心头文件重构 | 1 天 | ★☆☆ | ✅ 已完成 |
-| 3 | String 类替换 | 5-7 天 | ★★★ | ⏳ 待执行 |
+| 3 | String 类替换 | 5-7 天 | ★★★ | ⏳ 进行中（40%） |
 | 4 | GPIO 和硬件抽象层 | 1-2 天 | ★★☆ | ⏳ 待执行 |
 | 5 | I2C 通信迁移 | 2-3 天 | ★★☆ | ⏳ 待执行 |
 | 6 | SPIFFS 文件系统迁移 | 2-3 天 | ★★☆ | ⏳ 待执行 |
