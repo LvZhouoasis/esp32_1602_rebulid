@@ -1,8 +1,22 @@
 #ifndef MYDEFINE_H
 #define MYDEFINE_H
 
-#include <Arduino.h>
+// ==============================
+// ESP-IDF 原生头文件（替代 Arduino.h）
+// ==============================
+#include <stdint.h>
+#include <stdbool.h>
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
+
+// ESP-IDF 驱动
+#include "driver/gpio.h"
+
+// ESP-IDF 系统
 #include <esp_timer.h>
+
+// FreeRTOS
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 

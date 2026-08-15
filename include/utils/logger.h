@@ -1,7 +1,19 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#include <Arduino.h>
+// ==============================
+// ESP-IDF 原生头文件（替代 Arduino.h）
+// ==============================
+#include <stdint.h>
+#include <stdbool.h>
+#include <cstdarg>
+#include <cstring>
+#include <cstdio>
+
+// ESP-IDF 日志系统
+#include "esp_log.h"
+
+// FreeRTOS
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 

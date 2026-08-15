@@ -400,6 +400,30 @@ ESP_LOGI("LOGGER", "=== Logger System Initialized ===");
 
 ---
 
+### ✅ 阶段 2 完成记录
+
+**完成日期**：2026-08-15
+
+**已修改文件**：
+1. `include/mydefine.h` - 移除 `#include <Arduino.h>`，添加 ESP-IDF 原生头文件
+2. `include/utils/logger.h` - 移除 `#include <Arduino.h>`，添加 ESP-IDF 原生头文件
+3. `main/utils/logger.cpp` - 移除 Serial，替换为 ESP_LOGI/printf
+
+**主要修改**：
+- **mydefine.h**：添加 `stdint.h`, `stdbool.h`, `cstring`, `cstdio`, `cstdlib`, `driver/gpio.h`
+- **logger.h**：添加 `stdint.h`, `stdbool.h`, `cstdarg`, `cstring`, `cstdio`, `esp_log.h`
+- **logger.cpp**：
+  - 移除 `Serial.begin(115200)` 和所有 Serial 调用
+  - 替换为 `ESP_LOGI()` 和 `printf()`
+  - 替换 `ESP.getFreeHeap()` 等为 ESP-IDF 的 `esp_get_free_heap_size()`, `heap_caps_get_total_size()`
+  - 注释掉 String 类型的 log 函数（待阶段3处理）
+
+**待处理**：
+- [ ] logger.h 中的 `String` 类型函数声明（第101行）- 待阶段3处理
+- [ ] 验证所有文件编译通过
+
+---
+
 ### 阶段 3：String 类替换（最大改动）
 
 **目标**：将所有 Arduino `String` 替换为 C 风格字符串或自定义轻量封装
@@ -788,7 +812,7 @@ esp_pm_configure(&pm_config);
 | 阶段 | 内容 | 工时 | 难度 | 状态 |
 |------|------|------|------|------|
 | 1 | 构建系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
-| 2 | 核心头文件重构 | 1 天 | ★☆☆ | ⏳ 待执行 |
+| 2 | 核心头文件重构 | 1 天 | ★☆☆ | ✅ 已完成 |
 | 3 | String 类替换 | 5-7 天 | ★★★ | ⏳ 待执行 |
 | 4 | GPIO 和硬件抽象层 | 1-2 天 | ★★☆ | ⏳ 待执行 |
 | 5 | I2C 通信迁移 | 2-3 天 | ★★☆ | ⏳ 待执行 |
