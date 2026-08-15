@@ -16,7 +16,7 @@ namespace SystemIcons {
     extern uint8_t tempIcon[];
     extern uint8_t celsius[];
 
-    uint8_t* getIcon(const String& iconName);
+    uint8_t* getIcon(const char* iconName);
     uint8_t* getBatteryLeftIcon(const uint8_t& soc);
     uint8_t* getBatteryRightIcon(const uint8_t& soc);
 }
@@ -32,7 +32,7 @@ namespace WindIcons {
     extern uint8_t southWestWindIcon[];
     extern uint8_t northWestWindIcon[];
 
-    uint8_t* getIcon(const String& direction);
+    uint8_t* getIcon(const char* direction);
 }
 
 // 天气图标
@@ -60,8 +60,8 @@ namespace WeatherIcons {
     extern uint8_t dustStormLeft[8];
     extern uint8_t dustStormRight[8];
     
-    uint8_t* getLeftIcon(const String& weather);
-    uint8_t* getRightIcon(const String& weather);
+    uint8_t* getLeftIcon(const char* weather);
+    uint8_t* getRightIcon(const char* weather);
 }
 
 #endif  // ICONS_H

@@ -94,12 +94,7 @@ public:
      * @brief 输出日志
      */
     static void log(LogModule module, LogLevel level, const char* format, ...);
-    
-    /**
-     * @brief 输出日志（String版本）
-     */
-    static void log(LogModule module, LogLevel level, const String& message);
-    
+
     /**
      * @brief 获取当前可用堆内存（用于内存监控日志）
      */

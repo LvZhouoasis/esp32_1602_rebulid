@@ -288,9 +288,10 @@ void setup() {
     xTaskCreatePinnedToCore(_taskHealthMonitorTask, "TaskHealth", 3072, NULL, 1, &s_taskHealthMonitorHandle, 0);
 
     // 欢迎消息
-    String ver = String(PROJECT_VERSION) + "  " +String(BUILD_VERSION);
-    lcdText(ver,1);
-    lcdText(BUILD_TIMESTAMP,2);
+    char ver[32];
+    snprintf(ver, sizeof(ver), "%s  %s", PROJECT_VERSION, BUILD_VERSION);
+    lcdText(ver, 1);
+    lcdText(BUILD_TIMESTAMP, 2);
 
     // 挂载 SPIFFS
     if(!ConfigManager::initSPIFFS()) { 

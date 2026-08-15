@@ -37,33 +37,34 @@ public:
         UnknownError        ///< 未知错误
     };
 protected:
-    String configFilePath;  ///< 配置文件路径
+    char configFilePath[64];  ///< 配置文件路径
     Error lastError;        ///< 最后一次错误类型
 
     /**
      * @brief 构造函数
      * @param configFilePath 配置文件的完整路径
      */
-    ConfigManager(const String& configFilePath);
-    
+    ConfigManager(const char* configFilePath);
+
     /**
      * @brief 虚析构函数
      */
     virtual ~ConfigManager();
-    
+
     /**
      * @brief 从文件读取配置内容
-     * @param configContent 用于存储读取内容的字符串引用
+     * @param configContent 用于存储读取内容的缓冲区
+     * @param bufferSize 缓冲区大小
      * @return true 读取成功，false 读取失败
      */
-    bool readFile(String& configContent);
-    
+    bool readFile(char* configContent, size_t bufferSize);
+
     /**
      * @brief 将配置内容写入文件
      * @param configContent 要写入的配置内容
      * @return true 写入成功，false 写入失败
      */
-    bool writeFile(const String& configContent);
+    bool writeFile(const char* configContent);
     
     /**
      * @brief 列出目录内容
@@ -117,9 +118,9 @@ public:
     /**
      * @brief 获取错误类型的字符串描述
      * @param error 错误类型
-     * @return String 错误描述字符串
+     * @return const char* 错误描述字符串
      */
-    String getLastErrorString(Error error) const;
+    const char* getLastErrorString(Error error) const;
     
     /**
      * @brief 设置错误类型

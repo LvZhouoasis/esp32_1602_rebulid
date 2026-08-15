@@ -122,14 +122,23 @@ static void _renderBatteryInfoScreen() {
 	uint8_t soc = readStateOfCharge();
 	uint16_t remainingCap = readRemainingCapacity();
 
-	lcdText("" + String(voltage) + "mV " + String(current) + "mA", 1);
-	lcdText(String(soc) + "% " + String(remainingCap) + "mAh", 2);
+	char line1[17];
+	char line2[17];
+	snprintf(line1, sizeof(line1), "%umV %dmA", voltage, current);
+	snprintf(line2, sizeof(line2), "%u%% %umAh", soc, remainingCap);
+	lcdText(line1, 1);
+	lcdText(line2, 2);
 }
 
 static void _renderConnectInfoScreen() {
 	if (WiFi.status() == WL_CONNECTED) {
-		lcdText("SSID:" + wifiConfigManager.getSSID(), 1);
-		lcdText("IP:" + WiFi.localIP().toString(), 2);
+		char line1[17];
+		char line2[17];
+		snprintf(line1, sizeof(line1), "SSID:%s", wifiConfigManager.getSSID().c_str());
+		// TODO: WiFi.localIP().toString() 需要在阶段7处理
+		snprintf(line2, sizeof(line2), "IP:%s", WiFi.localIP().toString().c_str());
+		lcdText(line1, 1);
+		lcdText(line2, 2);
 	} else {
 		lcdText("Not Connected", 1);
 		lcdText("C:Back", 2);

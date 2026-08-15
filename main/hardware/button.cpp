@@ -201,13 +201,17 @@ void handleButtonsTask(void *pvParameters) {
             if (clientConnected && client.connected()) {
                 for (int i = 0; i < buttonCount; ++i) {
                     if (buttonJustPressed[i] && !currentButtonState[i]) {
-                        client.print("KEY_PRESS:" + String(buttons[i].label) + "\n");
+                        char msg[32];
+                        snprintf(msg, sizeof(msg), "KEY_PRESS:%s\n", buttons[i].label);
+                        client.print(msg);
                         currentButtonState[i] = true;
 
                         LOG_BUTTON_DEBUG("Send key pressed message: %s", buttons[i].label);
                     }
                     if(buttonJustPressed[i] == false && currentButtonState[i]) {
-                        client.print("KEY_STOP:" + String(buttons[i].label) + "\n");
+                        char msg[32];
+                        snprintf(msg, sizeof(msg), "KEY_STOP:%s\n", buttons[i].label);
+                        client.print(msg);
                         currentButtonState[i] = false;
 
                         LOG_BUTTON_DEBUG("Send key stop message: %s", buttons[i].label);

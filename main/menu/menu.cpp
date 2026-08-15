@@ -228,7 +228,7 @@ static void _renderMenuItemLine(const Menu* menu, int menuItemIndex, int visible
         return;
     }
 
-    String itemName = menu->items[menuItemIndex].name;
+    const char* itemName = menu->items[menuItemIndex].name;
 
     // 主菜单第0项：根据 WiFi 状态动态显示名称
     if (_isMainMenu(menu) && menuItemIndex == 0) {
@@ -236,9 +236,13 @@ static void _renderMenuItemLine(const Menu* menu, int menuItemIndex, int visible
     }
 
     if (s_menuContext.menuCursor == visibleIndex) {
-        lcdText(">" + itemName, lcdLine);
+        char line[17];
+        snprintf(line, sizeof(line), ">%s", itemName);
+        lcdText(line, lcdLine);
     } else {
-        lcdText(" " + itemName, lcdLine);
+        char line[17];
+        snprintf(line, sizeof(line), " %s", itemName);
+        lcdText(line, lcdLine);
     }
 }
 
