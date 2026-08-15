@@ -308,13 +308,33 @@ CONFIG_ESP_TIMER_TASK_STACK_SIZE=4096
 
 **已创建文件**：
 1. `CMakeLists.txt` - 项目根目录 CMake 配置
-2. `main/CMakeLists.txt` - 主组件配置，通过相对路径引用 `src/` 下的源文件
+2. `main/CMakeLists.txt` - 主组件配置，使用本地路径
 3. `sdkconfig.defaults` - ESP-IDF 默认配置（PSRAM、Flash、WiFi、电源管理等）
 
-**实现说明**：
-- 采用相对路径方案（`../src/`），保持与 PlatformIO 构建系统兼容
-- `main/` 目录作为 ESP-IDF 主组件入口，源代码仍在 `src/` 目录
-- 包含了所有 36 个源文件和 8 个组件依赖
+**项目结构调整**：
+- 采用**纯 ESP-IDF 标准结构**
+- 将 `src/` 目录下的所有源文件移动到 `main/` 目录
+- 删除原 `src/` 目录
+- 源代码现在位于 `main/` 目录，符合 ESP-IDF 规范
+
+**目录结构**：
+```
+second/
+├── CMakeLists.txt              # 根目录配置
+├── main/                       # 主组件目录（源代码在这里）
+│   ├── CMakeLists.txt          # 主组件配置
+│   ├── main.cpp
+│   ├── hardware/
+│   ├── applications/
+│   ├── connectivity/
+│   ├── services/
+│   ├── menu/
+│   ├── ui/
+│   └── utils/
+├── include/                    # 公共头文件
+├── sdkconfig.defaults          # ESP-IDF 默认配置
+└── partitions.csv              # 分区表
+```
 
 **待验证**：
 - [ ] 安装 ESP-IDF 工具链后执行 `idf.py build` 验证编译

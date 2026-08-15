@@ -4,67 +4,69 @@
 idf_component_register(
     SRCS
         # 主程序
-        "../src/main.cpp"
+        "main.cpp"
 
         # 硬件驱动层
-        "../src/hardware/lcd_driver.cpp"
-        "../src/hardware/button.cpp"
-        "../src/hardware/buzzer.cpp"
-        "../src/hardware/rgb_led.cpp"
-        "../src/hardware/fuel_gauge.cpp"
-        "../src/hardware/opt3001.cpp"
+        "hardware/lcd_driver.cpp"
+        "hardware/button.cpp"
+        "hardware/buzzer.cpp"
+        "hardware/rgb_led.cpp"
+        "hardware/fuel_gauge.cpp"
+        "hardware/opt3001.cpp"
 
         # 应用层
-        "../src/applications/clock.cpp"
-        "../src/applications/weather.cpp"
-        "../src/applications/pomodoro.cpp"
-        "../src/applications/badappleplayer.cpp"
-        "../src/applications/setting.cpp"
-        "../src/applications/about.cpp"
+        "applications/clock.cpp"
+        "applications/weather.cpp"
+        "applications/pomodoro.cpp"
+        "applications/badappleplayer.cpp"
+        "applications/setting.cpp"
+        "applications/about.cpp"
 
         # 网络连接层
-        "../src/connectivity/wifi_config.cpp"
-        "../src/connectivity/network.cpp"
-        "../src/connectivity/jwt_auth.cpp"
+        "connectivity/wifi_config.cpp"
+        "connectivity/network.cpp"
+        "connectivity/jwt_auth.cpp"
 
         # 服务层
-        "../src/services/protocol.cpp"
-        "../src/services/playbuffer.cpp"
-        "../src/services/config_manager.cpp"
-        "../src/services/wifi_config_manager.cpp"
-        "../src/services/qweather_auth_config_manager.cpp"
-        "../src/services/ota_manager.cpp"
-        "../src/services/time_manager.cpp"
-        "../src/services/sleep_manager.cpp"
-        "../src/services/auto_brightness.cpp"
-        "../src/services/kanamap.cpp"
-        "../src/services/web_setting.cpp"
+        "services/protocol.cpp"
+        "services/playbuffer.cpp"
+        "services/config_manager.cpp"
+        "services/wifi_config_manager.cpp"
+        "services/qweather_auth_config_manager.cpp"
+        "services/ota_manager.cpp"
+        "services/time_manager.cpp"
+        "services/sleep_manager.cpp"
+        "services/auto_brightness.cpp"
+        "services/kanamap.cpp"
+        "services/web_setting.cpp"
 
         # 菜单系统
-        "../src/menu/menu.cpp"
-        "../src/menu/menu_item.cpp"
-        "../src/menu/menu_navigator.cpp"
-        "../src/menu/status_bar_renderer.cpp"
+        "menu/menu.cpp"
+        "menu/menu_item.cpp"
+        "menu/menu_navigator.cpp"
+        "menu/status_bar_renderer.cpp"
 
         # UI 组件
-        "../src/ui/animetion.cpp"
-        "../src/ui/icons.cpp"
-        "../src/ui/hold_progress.cpp"
+        "ui/animetion.cpp"
+        "ui/icons.cpp"
+        "ui/hold_progress.cpp"
 
         # 工具类
-        "../src/utils/logger.cpp"
-        "../src/utils/memory_utils.cpp"
+        "utils/logger.cpp"
+        "utils/memory_utils.cpp"
 
     INCLUDE_DIRS
-        # 源代码目录
-        "../src"
-        "../src/hardware"
-        "../src/applications"
-        "../src/connectivity"
-        "../src/services"
-        "../src/menu"
-        "../src/ui"
-        "../src/utils"
+        # 当前目录（main）
+        "."
+
+        # 子目录
+        "hardware"
+        "applications"
+        "connectivity"
+        "services"
+        "menu"
+        "ui"
+        "utils"
 
         # 头文件目录
         "../include"
