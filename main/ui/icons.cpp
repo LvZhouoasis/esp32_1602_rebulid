@@ -77,8 +77,8 @@ namespace WindIcons {
         if (strcmp(direction, "W") == 0 || strcmp(direction, "西风") == 0) return westWindIcon;
         if (strcmp(direction, "NE") == 0 || strcmp(direction, "东北风") == 0) return northEastWindIcon;
         if (strcmp(direction, "SE") == 0 || strcmp(direction, "东南风") == 0) return southEastWindIcon;
-        if (strcmp(direction, "SW") == 0 || strcmp(direction, "西北风") == 0) return southWestWindIcon;
-        if (strcmp(direction, "NW") == 0 || strcmp(direction, "西南风") == 0) return northWestWindIcon;
+        if (strcmp(direction, "SW") == 0 || strcmp(direction, "西南风") == 0) return southWestWindIcon;
+        if (strcmp(direction, "NW") == 0 || strcmp(direction, "西北风") == 0) return northWestWindIcon;
         return SystemIcons::unknowIcon;
     }
 }

@@ -134,7 +134,7 @@ static void _renderConnectInfoScreen() {
 	if (WiFi.status() == WL_CONNECTED) {
 		char line1[17];
 		char line2[17];
-		snprintf(line1, sizeof(line1), "SSID:%s", wifiConfigManager.getSSID().c_str());
+		snprintf(line1, sizeof(line1), "SSID:%s", wifiConfigManager.getSSID());
 		// TODO: WiFi.localIP().toString() 需要在阶段7处理
 		snprintf(line2, sizeof(line2), "IP:%s", WiFi.localIP().toString().c_str());
 		lcdText(line1, 1);

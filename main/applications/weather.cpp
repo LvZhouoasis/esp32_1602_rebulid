@@ -1,20 +1,21 @@
 #include "./applications/weather.h"
 #include "./hardware/buzzer.h"
+#include <cstring>
 
 // 天气服务，API接口通过ESP32向云端获取JSON数据
 extern QWeatherAuthConfigManager qweatherAuthConfigManager;
 
 bool weatherSynced = false;
-String currentWeather = "N/A";
-String currentTemp = "--C";
-String currentCity = "N/A";
-String weatherUpdateTime = "--/-- --:--";
-String feelsLike = "--C";
-String windDir = "";
-String windScale = "";
-String humidity = "";
-String pressure = "";
-String obsTime = "";
+char currentWeather[16] = "N/A";
+char currentTemp[8] = "--C";
+char currentCity[16] = "N/A";
+char weatherUpdateTime[16] = "--/-- --:--";
+char feelsLike[8] = "--C";
+char windDir[16] = "";
+char windScale[4] = "";
+char humidity[8] = "";
+char pressure[8] = "";
+char obsTime[16] = "";
 unsigned long lastWeatherUpdate = 0;
 unsigned int interface_num = 0; // 当前显示的界面编号
 static bool s_weatherIsNewInterface = false;
@@ -136,8 +137,8 @@ void handleWeatherInterface() {
 void updateWeatherScreen() {
     if(interface_num == 0){
         lcdResetCursor();
-        if (currentCity != "N/A" && currentCity.length() > 0) {
-            lcdText(currentCity.c_str(), 1); // 第一行显示配置地名
+        if (strcmp(currentCity, "N/A") != 0 && strlen(currentCity) > 0) {
+            lcdText(currentCity, 1); // 第一行显示配置地名
         } else {
             lcdText("N/A", 1);
         }
@@ -150,7 +151,9 @@ void updateWeatherScreen() {
 
         lcdPrint(currentTemp);
         lcdCreateCharAuto(SystemIcons::celsius);
-        lcdPrint(" Fel " + feelsLike);
+        char feelsBuf[16];
+        snprintf(feelsBuf, sizeof(feelsBuf), " Fel %s", feelsLike);
+        lcdPrint(feelsBuf);
         lcdCreateCharAuto(SystemIcons::celsius);
 
 
@@ -225,17 +228,22 @@ bool fetchWeatherData() {
     lcdText("Please wait...", 2);
 
     // 生成 JWT
-    String jwtToken = generate_jwt(qweatherAuthConfigManager.getKId(), qweatherAuthConfigManager.getProjectID(), seed32);
-    LOG_WEATHER_DEBUG("JWT token: " + jwtToken);
+    char jwtToken[512];
+    generate_jwt(qweatherAuthConfigManager.getKId(), qweatherAuthConfigManager.getProjectID(), seed32, jwtToken, sizeof(jwtToken));
+    LOG_WEATHER_DEBUG("JWT token: %s", jwtToken);
 
     // 拼接 URL
-    String url = "https://" + qweatherAuthConfigManager.getApiHost() + "/v7/weather/now?location=" + qweatherAuthConfigManager.getLocation();
-    LOG_WEATHER_DEBUG("Final Request URL: %s", url.c_str());
-    
+    char url[256];
+    snprintf(url, sizeof(url), "https://%s/v7/weather/now?location=%s",
+        qweatherAuthConfigManager.getApiHost(), qweatherAuthConfigManager.getLocation());
+    LOG_WEATHER_DEBUG("Final Request URL: %s", url);
+
     HTTPClient http;
     http.begin(url);
     http.addHeader("Accept-Encoding", "gzip");                  // 请求 gzip 压缩响应
-    http.addHeader("Authorization", "Bearer " + jwtToken);      // 使用 Bearer 令牌进行授权
+    char authHeader[560];
+    snprintf(authHeader, sizeof(authHeader), "Bearer %s", jwtToken);
+    http.addHeader("Authorization", authHeader);      // 使用 Bearer 令牌进行授权
 
     int httpCode = http.GET();
 
@@ -244,7 +252,9 @@ bool fetchWeatherData() {
     else {
         LOG_WEATHER_ERROR("HTTP error: %d", httpCode);
         lcdText("HTTP error", 1);
-        lcdText(String(httpCode), 2);
+        char httpCodeStr[8];
+        snprintf(httpCodeStr, sizeof(httpCodeStr), "%d", httpCode);
+        lcdText(httpCodeStr, 2);
         _playWeatherFailSoundThrottled();
         http.end();
         return false; // 直接返回，避免解析空数据
@@ -302,7 +312,8 @@ bool fetchWeatherData() {
         return false;
     }
 
-    String jsonData;
+    char* jsonData = nullptr;
+    size_t jsonDataLen = 0;
     zlib_turbo zturbo;      // zlib_turbo 实例
 
     // 检查是否为 gzip 格式（检查前两个字节 0x1f 0x8b）
@@ -335,14 +346,16 @@ bool fetchWeatherData() {
             _playWeatherFailSoundThrottled();
             return false;
         }
-        jsonData = String((char *)uncompressedBuffer.get(), uncompSize);
+        jsonData = (char*)uncompressedBuffer.get();
+        jsonDataLen = uncompSize;
         // uncompressedBuffer 会在作用域结束时自动释放
     } else {
-        jsonData = String((char *)compressedBuffer.get(), iCount);
+        jsonData = (char*)compressedBuffer.get();
+        jsonDataLen = iCount;
     }
     // compressedBuffer 会在作用域结束时自动释放
 
-    if (jsonData.length() == 0) {
+    if (jsonDataLen == 0 || jsonData == nullptr) {
         LOG_WEATHER_ERROR("Empty response");
         lcdText("Empty response", 1);
         lcdText("", 2);
@@ -352,7 +365,7 @@ bool fetchWeatherData() {
 
     // 解析Json
     JsonDocument doc;       // 自动选择合适的内存分配器
-    DeserializationError error = deserializeJson(doc, jsonData);    // 反序列化JSON
+    DeserializationError error = deserializeJson(doc, jsonData, jsonDataLen);    // 反序列化JSON
     if (error) {
         LOG_WEATHER_ERROR("JSON parse failed: %s", error.c_str());
         lcdText("JSON failed", 1);
@@ -362,52 +375,52 @@ bool fetchWeatherData() {
     }
 
     // 成功解析，赋值天气数据
-    currentCity = qweatherAuthConfigManager.getCityName();
-    
+    strlcpy(currentCity, qweatherAuthConfigManager.getCityName(), sizeof(currentCity));
+
     // 安全地获取天气数据，避免空值
-    if (doc["now"]["text"].is<String>()) {
-        currentWeather = doc["now"]["text"].as<String>();
-        if (currentWeather.length() == 0) {
+    if (doc["now"]["text"].is<const char*>()) {
+        strlcpy(currentWeather, doc["now"]["text"].as<const char*>(), sizeof(currentWeather));
+        if (strlen(currentWeather) == 0) {
             LOG_WEATHER_WARN("Empty weather text");
-            currentWeather = "Unknown";
+            strlcpy(currentWeather, "Unknown", sizeof(currentWeather));
         }
     } else {
         LOG_WEATHER_WARN("unknown weather text");
-        currentWeather = "Unknown";
+        strlcpy(currentWeather, "Unknown", sizeof(currentWeather));
     }
-    
+
     // 安全地获取其他数据
-    currentTemp = (doc["now"]["temp"].is<String>() ? doc["now"]["temp"].as<String>() : "?") + "C";
-    feelsLike = (doc["now"]["feelsLike"].is<String>() ? doc["now"]["feelsLike"].as<String>() : "?") + "C";
-    windDir = doc["now"]["windDir"].is<String>() ? doc["now"]["windDir"].as<String>() : "";
-    windScale = doc["now"]["windScale"].is<String>() ? doc["now"]["windScale"].as<String>() : "?";
-    humidity = (doc["now"]["humidity"].is<String>() ? doc["now"]["humidity"].as<String>() : "?") + "%";
-    pressure = (doc["now"]["pressure"].is<String>() ? doc["now"]["pressure"].as<String>() : "?") + "hPa";
-    
+    snprintf(currentTemp, sizeof(currentTemp), "%sC",
+        doc["now"]["temp"].is<const char*>() ? doc["now"]["temp"].as<const char*>() : "?");
+    snprintf(feelsLike, sizeof(feelsLike), "%sC",
+        doc["now"]["feelsLike"].is<const char*>() ? doc["now"]["feelsLike"].as<const char*>() : "?");
+    strlcpy(windDir,
+        doc["now"]["windDir"].is<const char*>() ? doc["now"]["windDir"].as<const char*>() : "", sizeof(windDir));
+    strlcpy(windScale,
+        doc["now"]["windScale"].is<const char*>() ? doc["now"]["windScale"].as<const char*>() : "?", sizeof(windScale));
+    snprintf(humidity, sizeof(humidity), "%s%%",
+        doc["now"]["humidity"].is<const char*>() ? doc["now"]["humidity"].as<const char*>() : "?");
+    snprintf(pressure, sizeof(pressure), "%shPa",
+        doc["now"]["pressure"].is<const char*>() ? doc["now"]["pressure"].as<const char*>() : "?");
+
     // 格式化 obsTime 为 MM/DD HH:MM
-    String rawObsTime = doc["now"]["obsTime"].is<String>() ? doc["now"]["obsTime"].as<String>() : "";
-    if (rawObsTime.length() >= 16) {
+    const char* rawObsTime = doc["now"]["obsTime"].is<const char*>() ? doc["now"]["obsTime"].as<const char*>() : "";
+    if (strlen(rawObsTime) >= 16) {
         // 格式为ISO8601：2023-11-01T14:30:00+08:00
-        String month = rawObsTime.substring(5, 7);   // 提取月份
-        String day = rawObsTime.substring(8, 10);    // 提取日期
-        String hour = rawObsTime.substring(11, 13);  // 提取小时
-        String minute = rawObsTime.substring(14, 16); // 提取分钟
-        obsTime = month + "/" + day + " " + hour + ":" + minute;
+        snprintf(obsTime, sizeof(obsTime), "%.*s/%.*s %.*s:%.*s",
+            2, rawObsTime + 5, 2, rawObsTime + 8, 2, rawObsTime + 11, 2, rawObsTime + 14);
     } else {
-        obsTime = "--/-- --:--";
+        strlcpy(obsTime, "--/-- --:--", sizeof(obsTime));
     }
-    
+
     // 格式化 weatherUpdateTime 为 MM/DD HH:MM
-    String rawUpdateTime = doc["updateTime"].is<String>() ? doc["updateTime"].as<String>() : "";
-    if (rawUpdateTime.length() >= 16) {
+    const char* rawUpdateTime = doc["updateTime"].is<const char*>() ? doc["updateTime"].as<const char*>() : "";
+    if (strlen(rawUpdateTime) >= 16) {
         // 格式为ISO8601
-        String month = rawUpdateTime.substring(5, 7);   // 提取月份
-        String day = rawUpdateTime.substring(8, 10);    // 提取日期
-        String hour = rawUpdateTime.substring(11, 13);  // 提取小时
-        String minute = rawUpdateTime.substring(14, 16); // 提取分钟
-        weatherUpdateTime = month + "/" + day + " " + hour + ":" + minute;
+        snprintf(weatherUpdateTime, sizeof(weatherUpdateTime), "%.*s/%.*s %.*s:%.*s",
+            2, rawUpdateTime + 5, 2, rawUpdateTime + 8, 2, rawUpdateTime + 11, 2, rawUpdateTime + 14);
     } else {
-        weatherUpdateTime = "--/-- --:--";
+        strlcpy(weatherUpdateTime, "--/-- --:--", sizeof(weatherUpdateTime));
     }
     
     weatherSynced = true;
@@ -416,7 +429,7 @@ bool fetchWeatherData() {
     // 打印内存使用情况
     MemoryManager::printMemoryInfo("Weather fetch complete");
     
-    LOG_WEATHER_INFO("Weather updated: %s, %s", currentWeather.c_str(), currentTemp.c_str());
+    LOG_WEATHER_INFO("Weather updated: %s, %s", currentWeather, currentTemp);
     updateWeatherScreen();
     return true;
 }

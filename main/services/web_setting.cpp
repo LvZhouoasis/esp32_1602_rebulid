@@ -7,6 +7,7 @@
 #include "./hardware/buzzer.h"
 #include "./applications/weather.h"
 #include "esp32-hal-cpu.h"
+#include <cstring>
 
 extern QWeatherAuthConfigManager qweatherAuthConfigManager;
 
@@ -29,42 +30,35 @@ static const char* _wifiStateToStr(WiFiConnectionState state) {
 }
 
 void webSettingHandleDeviceStatus() {
-    String json = "{";
-    json += "\"brightness\":" + String(brightness) + ",";
-    json += "\"autoBrightness\":" + String(isAutoBrightnessActive() ? "true" : "false") + ",";
-    json += "\"soundEffects\":" + String(buzzerIsUiSoundEnabled() ? "true" : "false");
-    json += "}";
+    char json[128];
+    snprintf(json, sizeof(json), "{\"brightness\":%d,\"autoBrightness\":%s,\"soundEffects\":%s}",
+        brightness, isAutoBrightnessActive() ? "true" : "false", buzzerIsUiSoundEnabled() ? "true" : "false");
     settingServer.send(200, "application/json; charset=utf-8", json);
 }
 
 void webSettingHandleCitySearchReady() {
     const bool ready = qweatherAuthConfigManager.checkApiConfigValid();
-    String json = "{";
-    json += "\"ready\":" + String(ready ? "true" : "false") + ",";
-    json += "\"message\":\"" + String(ready ? "配置完整，可进行城市搜索" : "和风天气密钥未完整配置，无法搜索") + "\"";
-    json += "}";
+    char json[192];
+    snprintf(json, sizeof(json), "{\"ready\":%s,\"message\":\"%s\"}",
+        ready ? "true" : "false", ready ? "配置完整，可进行城市搜索" : "和风天气密钥未完整配置，无法搜索");
     settingServer.send(200, "application/json; charset=utf-8", json);
 }
 
 void webSettingHandleDeviceBasicInfo() {
     const unsigned long uptimeMs = GET_MS();
-    const size_t freeHeap = ESP.getFreeHeap();
-    const size_t totalHeap = ESP.getHeapSize();
-    const size_t freePsram = ESP.getFreePsram();
-    const size_t totalPsram = ESP.getPsramSize();
+    const size_t freeHeap = esp_get_free_heap_size();
+    const size_t totalHeap = heap_caps_get_total_size(MALLOC_CAP_DEFAULT);
+    const size_t freePsram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+    const size_t totalPsram = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
 
-    String json = "{";
-    json += "\"projectVersion\":\"" + String(PROJECT_VERSION) + "\",";
-    json += "\"buildVersion\":\"" + String(BUILD_VERSION) + "\",";
-    json += "\"buildTimestamp\":\"" + String(BUILD_TIMESTAMP) + "\",";
-    json += "\"uptimeMs\":" + String(uptimeMs) + ",";
-    json += "\"cpuFreqMHz\":" + String(getCpuFrequencyMhz()) + ",";
-    json += "\"freeHeap\":" + String(freeHeap) + ",";
-    json += "\"totalHeap\":" + String(totalHeap) + ",";
-    json += "\"freePsram\":" + String(freePsram) + ",";
-    json += "\"totalPsram\":" + String(totalPsram) + ",";
-    json += "\"resetReason\":" + String((int)esp_reset_reason());
-    json += "}";
+    char json[384];
+    snprintf(json, sizeof(json),
+        "{\"projectVersion\":\"%s\",\"buildVersion\":\"%s\",\"buildTimestamp\":\"%s\","
+        "\"uptimeMs\":%lu,\"cpuFreqMHz\":%u,\"freeHeap\":%u,\"totalHeap\":%u,"
+        "\"freePsram\":%u,\"totalPsram\":%u,\"resetReason\":%d}",
+        PROJECT_VERSION, BUILD_VERSION, BUILD_TIMESTAMP,
+        uptimeMs, getCpuFrequencyMhz(), freeHeap, totalHeap,
+        freePsram, totalPsram, (int)esp_reset_reason());
 
     settingServer.send(200, "application/json; charset=utf-8", json);
 }
@@ -73,11 +67,9 @@ void webSettingHandleAlsRealtimeInfo() {
     const float lux = isOPT3001Connected ? readLux() : -1.0f;
     const float smoothedLux = getCurrentLux(true);
 
-    String json = "{";
-    json += "\"connected\":" + String(isOPT3001Connected ? "true" : "false") + ",";
-    json += "\"lux\":" + String(lux, 2) + ",";
-    json += "\"smoothedLux\":" + String(smoothedLux, 2);
-    json += "}";
+    char json[128];
+    snprintf(json, sizeof(json), "{\"connected\":%s,\"lux\":%.2f,\"smoothedLux\":%.2f}",
+        isOPT3001Connected ? "true" : "false", lux, smoothedLux);
 
     settingServer.send(200, "application/json; charset=utf-8", json);
 }
@@ -87,25 +79,20 @@ void webSettingHandleFuelGaugeRealtimeInfo() {
     const int16_t current = readAverageCurrent();
     const uint8_t soc = readStateOfCharge();
 
-    String json = "{";
-    json += "\"connected\":" + String(isfuelICConnected ? "true" : "false") + ",";
-    json += "\"voltageMv\":" + String(voltage) + ",";
-    json += "\"currentMa\":" + String(current) + ",";
-    json += "\"soc\":" + String(soc);
-    json += "}";
+    char json[128];
+    snprintf(json, sizeof(json), "{\"connected\":%s,\"voltageMv\":%u,\"currentMa\":%d,\"soc\":%u}",
+        isfuelICConnected ? "true" : "false", voltage, current, soc);
 
     settingServer.send(200, "application/json; charset=utf-8", json);
 }
 
 void webSettingHandleWifiInfo() {
-    String json = "{";
-    json += "\"state\":\"" + String(_wifiStateToStr(wifiConnectionState)) + "\",";
-    json += "\"wlStatus\":" + String((int)WiFi.status()) + ",";
-    json += "\"ssid\":\"" + WiFi.SSID() + "\",";
-    json += "\"ip\":\"" + WiFi.localIP().toString() + "\",";
-    json += "\"rssi\":" + String(WiFi.RSSI()) + ",";
-    json += "\"mac\":\"" + WiFi.macAddress() + "\"";
-    json += "}";
+    char json[256];
+    snprintf(json, sizeof(json),
+        "{\"state\":\"%s\",\"wlStatus\":%d,\"ssid\":\"%s\",\"ip\":\"%s\",\"rssi\":%d,\"mac\":\"%s\"}",
+        _wifiStateToStr(wifiConnectionState), (int)WiFi.status(),
+        WiFi.SSID().c_str(), WiFi.localIP().toString().c_str(),
+        WiFi.RSSI(), WiFi.macAddress().c_str());
 
     settingServer.send(200, "application/json; charset=utf-8", json);
 }
@@ -121,7 +108,7 @@ void webSettingHandleSetBrightness() {
         return;
     }
 
-    int value = settingServer.arg("value").toInt();
+    int value = atoi(settingServer.arg("value").c_str());
     if (value < 0) value = 0;
     if (value > 255) value = 255;
 
@@ -129,11 +116,8 @@ void webSettingHandleSetBrightness() {
     setLcdBrightness((uint8_t)value);
     ConfigManager::saveAutoBrightnessEnabled(false);
 
-    String json = "{";
-    json += "\"ok\":true,";
-    json += "\"brightness\":" + String(brightness) + ",";
-    json += "\"autoBrightness\":false";
-    json += "}";
+    char json[96];
+    snprintf(json, sizeof(json), "{\"ok\":true,\"brightness\":%d,\"autoBrightness\":false}", brightness);
     settingServer.send(200, "application/json; charset=utf-8", json);
 }
 
@@ -146,11 +130,9 @@ void webSettingHandleToggleAutoBrightness() {
     const bool enabled = toggleAutoBrightness();
     ConfigManager::saveAutoBrightnessEnabled(enabled);
 
-    String json = "{";
-    json += "\"ok\":true,";
-    json += "\"autoBrightness\":" + String(enabled ? "true" : "false") + ",";
-    json += "\"brightness\":" + String(brightness);
-    json += "}";
+    char json[96];
+    snprintf(json, sizeof(json), "{\"ok\":true,\"autoBrightness\":%s,\"brightness\":%d}",
+        enabled ? "true" : "false", brightness);
     settingServer.send(200, "application/json; charset=utf-8", json);
 }
 
@@ -167,10 +149,8 @@ void webSettingHandleToggleSoundEffects() {
         buzzerPlaySelectSound();
     }
 
-    String json = "{";
-    json += "\"ok\":true,";
-    json += "\"soundEffects\":" + String(enabled ? "true" : "false");
-    json += "}";
+    char json[64];
+    snprintf(json, sizeof(json), "{\"ok\":true,\"soundEffects\":%s}", enabled ? "true" : "false");
     settingServer.send(200, "application/json; charset=utf-8", json);
 }
 
@@ -212,68 +192,53 @@ void webSettingHandleOTAURL() {
         return;
     }
     
-    String url = settingServer.arg("url");
-    LOG_SYSTEM_INFO("OTA from URL: %s", url.c_str());
-    
+    const char* url = settingServer.arg("url").c_str();
+    LOG_SYSTEM_INFO("OTA from URL: %s", url);
+
     // 先响应前端,告诉它 OTA 已开始 (HTTP 202 Accepted)
-    settingServer.send(202, "application/json", 
+    settingServer.send(202, "application/json",
         "{\"success\":true,\"message\":\"OTA started\"}");
-    
-    // 创建独立任务执行 OTA
+
+    // 创建独立任务执行 OTA - 复制URL到堆上
+    char* urlCopy = strdup(url);
     xTaskCreate([](void* param) {
-        String* urlPtr = (String*)param;
-        bool useHTTPS;
-        if(urlPtr->startsWith("https://")){
-            useHTTPS = true;
-        } else {
-            useHTTPS = false;
-        }
-        OTAResult result = otaUpdateFromURL(*urlPtr, useHTTPS);
+        char* urlStr = (char*)param;
+        bool useHTTPS = (strncmp(urlStr, "https://", 8) == 0);
+        OTAResult result = otaUpdateFromURL(urlStr, useHTTPS);
         if (result != OTA_SUCCESS) {
-            LOG_SYSTEM_ERROR("OTA failed: %s", otaGetErrorString().c_str());
+            LOG_SYSTEM_ERROR("OTA failed: %s", otaGetErrorString());
         }
-        delete urlPtr;
+        free(urlStr);
         vTaskDelete(NULL);
-    }, "OTA_Task", 8192, new String(url), 5, NULL);
+    }, "OTA_Task", 8192, urlCopy, 5, NULL);
 }
 
 // OTA进度查询
 void webSettingHandleOTAProgress() {
     int progress = otaGetProgress();
     OTAStatus status = otaGetStatus();
-    String statusStr;
-    
+    const char* statusStr;
+
     switch(status) {
-        case OTA_IDLE:
-            statusStr = "\"idle\"";
-            break;
-        case OTA_RUNNING:
-            statusStr = "\"in_progress\"";
-            break;
-        case OTA_COMPLETED_SUCCESS:
-            statusStr = "\"success\"";
-            break;
-        case OTA_COMPLETED_FAILED:
-            statusStr = "\"failed\"";
-            break;
-        default:
-            statusStr = "\"unknown\"";
-            break;
+        case OTA_IDLE: statusStr = "\"idle\""; break;
+        case OTA_RUNNING: statusStr = "\"in_progress\""; break;
+        case OTA_COMPLETED_SUCCESS: statusStr = "\"success\""; break;
+        case OTA_COMPLETED_FAILED: statusStr = "\"failed\""; break;
+        default: statusStr = "\"unknown\""; break;
     }
 
-    String json = "";
-    String errorJson = ",\"error\":\"";
+    char json[256];
+    const char* errorStr = otaGetErrorString();
 
     // 有错误信息时提示客户端
-    if(otaGetErrorString() != ""){
-        json = "{\"progress\":\"0\",\"status\":\"failed\",\"error\":\"" + otaGetErrorString() + "\"}";
-        LOG_SYSTEM_DEBUG("OTA Progress queried with error: " + json);
+    if(strlen(errorStr) > 0){
+        snprintf(json, sizeof(json), "{\"progress\":\"0\",\"status\":\"failed\",\"error\":\"%s\"}", errorStr);
+        LOG_SYSTEM_DEBUG("OTA Progress queried with error: %s", json);
     }
-    
     // 无错误信息时正常返回进度和状态
     else{
-        json = "{\"progress\":" + String(progress) + ",\"status\":" + statusStr + "}";
-        LOG_SYSTEM_DEBUG("OTA Progress queried: " + json);
+        snprintf(json, sizeof(json), "{\"progress\":%d,\"status\":%s}", progress, statusStr);
+        LOG_SYSTEM_DEBUG("OTA Progress queried: %s", json);
     }
 
     settingServer.send(200, "application/json", json);
@@ -302,7 +267,7 @@ void webSettingHandleOTAUpload() {
         if (upload.filename && upload.filename.length() > 0) {
             LOG_SYSTEM_INFO("OTA Upload Start: %s", upload.filename.c_str());
             lcdText("Uploading...", 1);
-            lcdText(upload.filename, 2);
+            lcdText(upload.filename.c_str(), 2);
             updateColor(CRGB::Orange);
             otaExpectedSize = 0;  // 重置预期大小
             
@@ -311,8 +276,9 @@ void webSettingHandleOTAUpload() {
                 LOG_SYSTEM_ERROR("OTA begin failed");
                 lcdText("OTA Begin Fail", 1);
                 lcdText("", 2);
-                settingServer.send(500, "application/json", 
-                    "{\"success\":false,\"error\":\"" + String(Update.errorString()) + "\"}");
+                char errBuf[128];
+                snprintf(errBuf, sizeof(errBuf), "{\"success\":false,\"error\":\"%s\"}", Update.errorString());
+                settingServer.send(500, "application/json", errBuf);
                 return;
             }
         }
@@ -396,7 +362,7 @@ void webSettingHandleSet() {
         return;
     }
 
-    String body = settingServer.arg("plain");
+    const char* body = settingServer.arg("plain").c_str();
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, body);
     if (err) {
@@ -410,25 +376,38 @@ void webSettingHandleSet() {
         return;
     }
 
-    String apiHost = doc["apiHost"] | (doc["host"] | "");
-    String kid = doc["kID"] | (doc["kid"] | "");
-    String project = doc["projectID"] | (doc["project"] | "");
-    String privateKey = doc["privateKey"] | (doc["key"] | "");
+    char apiHost[64], kid[64], project[64], privateKey[128];
+    strlcpy(apiHost, doc["apiHost"] | doc["host"] | "", sizeof(apiHost));
+    strlcpy(kid, doc["kID"] | doc["kid"] | "", sizeof(kid));
+    strlcpy(project, doc["projectID"] | doc["project"] | "", sizeof(project));
+    strlcpy(privateKey, doc["privateKey"] | doc["key"] | "", sizeof(privateKey));
 
-    apiHost.trim();
-    kid.trim();
-    project.trim();
-    privateKey.trim();
-    
+    // 去除首尾空格
+    auto trimStr = [](char* str) {
+        char* start = str;
+        while (*start == ' ') start++;
+        if (start != str) memmove(str, start, strlen(start) + 1);
+        size_t len = strlen(str);
+        while (len > 0 && str[len - 1] == ' ') {
+            str[--len] = '\0';
+        }
+    };
+    trimStr(apiHost);
+    trimStr(kid);
+    trimStr(project);
+    trimStr(privateKey);
+
     // Validate base64 PKCS#8 Ed25519 private key using jwt_auth helper
-    if (!validate_base64_ed25519_key(privateKey.c_str())) {
+    if (!validate_base64_ed25519_key(privateKey)) {
         settingServer.send(400, "application/json; charset=utf-8", "{\"error\":\"无效的 privateKey\"}");
         LOG_WEB_WARN("Invalid privateKey base64 PKCS#8");
         return;
     }
 
     if(!qweatherAuthConfigManager.setAuth(apiHost, kid, project, privateKey)){
-        settingServer.send(500, "application/json; charset=utf-8", "{\"error\":\""+ qweatherAuthConfigManager.getLastQWeatherErrorString() +"\"}");
+        char errBuf[128];
+        snprintf(errBuf, sizeof(errBuf), "{\"error\":\"%s\"}", qweatherAuthConfigManager.getLastQWeatherErrorString());
+        settingServer.send(500, "application/json; charset=utf-8", errBuf);
         LOG_WEB_ERROR("Failed to save JWT config");
         return;
     }
@@ -436,22 +415,21 @@ void webSettingHandleSet() {
 
     // 打印到串口DEBUG等级日志
     LOG_WEATHER_DEBUG("==== Configuration received ====");
-    LOG_WEATHER_DEBUG("API Host: " + apiHost);
-    LOG_WEATHER_DEBUG("kid: " + kid);
-    LOG_WEATHER_DEBUG("projectID: " + project);
-    LOG_WEATHER_DEBUG("private key length: " + String(privateKey.length()));
+    LOG_WEATHER_DEBUG("API Host: %s", apiHost);
+    LOG_WEATHER_DEBUG("kid: %s", kid);
+    LOG_WEATHER_DEBUG("projectID: %s", project);
+    LOG_WEATHER_DEBUG("private key length: %zu", strlen(privateKey));
 
     // 保存成功
     settingServer.send(200, "application/json; charset=utf-8", "{\"ok\":true}");
 }
 
 void webSettingHandleGetApiInfo() {
-    String json = "{";
-    json += "\"apiHost\":\"" + qweatherAuthConfigManager.getApiHost() + "\",";
-    json += "\"kID\":\"" + qweatherAuthConfigManager.getKId() + "\",";
-    json += "\"projectID\":\"" + qweatherAuthConfigManager.getProjectID() + "\",";
-    json += "\"privateKey\":" + String(isKeyDone ? "true" : "false");
-    json += "}";
+    char json[256];
+    snprintf(json, sizeof(json),
+        "{\"apiHost\":\"%s\",\"kID\":\"%s\",\"projectID\":\"%s\",\"privateKey\":%s}",
+        qweatherAuthConfigManager.getApiHost(), qweatherAuthConfigManager.getKId(),
+        qweatherAuthConfigManager.getProjectID(), isKeyDone ? "true" : "false");
     settingServer.send(200, "application/json; charset=utf-8", json);
 }
 
@@ -479,51 +457,61 @@ void webSettingHandleCitySearch() {
     settingServer.sendContent_P(city_search_html, len2);
 }
 
-String fetchCitySearchResult(String& location) {
-    location.trim();
+void fetchCitySearchResult(char* location) {
+    // 去除首尾空格
+    char* start = location;
+    while (*start == ' ') start++;
+    if (start != location) memmove(location, start, strlen(start) + 1);
+    size_t locLen = strlen(location);
+    while (locLen > 0 && location[locLen - 1] == ' ') {
+        location[--locLen] = '\0';
+    }
 
     if(!qweatherAuthConfigManager.checkApiConfigValid()){
         LOG_WEATHER_ERROR("API configuration missing for city search");
         settingServer.send(500, "text/html; charset=utf-8", "{\"error\":\"API配置缺失，无法进行城市搜索\"}");
-        return " ";
+        return;
     }
 
-    String varApiHost = qweatherAuthConfigManager.getApiHost();
-    String varKid = qweatherAuthConfigManager.getKId();
-    String varProjectID = qweatherAuthConfigManager.getProjectID();
-    String varBase64Key = qweatherAuthConfigManager.getBase64Key();
-    String jwtToken;
-    
+    const char* varApiHost = qweatherAuthConfigManager.getApiHost();
+    const char* varKid = qweatherAuthConfigManager.getKId();
+    const char* varProjectID = qweatherAuthConfigManager.getProjectID();
+
     // 确保先生成seed32
     generateSeed32();
 
     // 生成JWT
-    jwtToken = generate_jwt(varKid, varProjectID, seed32);
-    LOG_WEATHER_DEBUG("City search JWT token generated, length: " + String(jwtToken.length()));
-        
-    if (varApiHost.length() == 0 || jwtToken.length() == 0) {
+    char jwtToken[512];
+    generate_jwt(varKid, varProjectID, seed32, jwtToken, sizeof(jwtToken));
+    LOG_WEATHER_DEBUG("City search JWT token generated, length: %zu", strlen(jwtToken));
+
+    if (strlen(varApiHost) == 0 || strlen(jwtToken) == 0) {
         LOG_WEATHER_ERROR("API configuration missing for city search (host or token empty)");
         settingServer.send(500, "text/html; charset=utf-8", "{\"error\":\"API配置缺失，无法进行城市搜索\"}");
-        return " ";
+        return;
     }
 
-
     // 请求城市搜索API
-    String url = "https://" + varApiHost + "/geo/v2/city/lookup?location=" + location + "&number=10";
-    LOG_WEATHER_INFO("City search request URL: " + url);
-    
+    char url[256];
+    snprintf(url, sizeof(url), "https://%s/geo/v2/city/lookup?location=%s&number=10", varApiHost, location);
+    LOG_WEATHER_INFO("City search request URL: %s", url);
+
     HTTPClient http;
     http.begin(url);                            // 让HTTPClient自动处理HTTPS和DNS
     http.addHeader("Accept-Encoding", "gzip");
-    http.addHeader("Authorization", "Bearer " + jwtToken);
+    char authHeader[560];
+    snprintf(authHeader, sizeof(authHeader), "Bearer %s", jwtToken);
+    http.addHeader("Authorization", authHeader);
     LOG_WEATHER_DEBUG("City search authorization header set");
-    
+
     int httpCode = http.GET();
-    LOG_WEATHER_INFO("City search HTTP response code: " + String(httpCode));
+    LOG_WEATHER_INFO("City search HTTP response code: %d", httpCode);
     if (httpCode != 200) {
         http.end();
-        settingServer.send(500, "text/html; charset=utf-8", "{\"error\":\"请求失败，HTTP代码：" + String(httpCode) + "\"}");
-        return " ";
+        char errBuf[96];
+        snprintf(errBuf, sizeof(errBuf), "{\"error\":\"请求失败，HTTP代码：%d\"}", httpCode);
+        settingServer.send(500, "text/html; charset=utf-8", errBuf);
+        return;
     }
     int payloadSize = http.getSize();
     
@@ -547,101 +535,96 @@ String fetchCitySearchResult(String& location) {
     }
     http.end();
     
-    String jsonData;
+    char* jsonData = nullptr;
+    size_t jsonDataLen = 0;
     zlib_turbo zt;
     if (iCount >= 2 && compressedBuffer.get()[0] == 0x1f && compressedBuffer.get()[1] == 0x8b) {
         int uncompSize = zt.gzip_info(compressedBuffer.get(), iCount);
         if (uncompSize <= 0) {
             settingServer.send(500, "text/html; charset=utf-8", "{\"error\":\"Gzip解压失败\"}");
-            return " ";
+            return;
         }
-        
+
         MemoryManager::SafeBuffer uncompressedBuffer(uncompSize + 8, "CitySearch_Decompressed");
         if (!uncompressedBuffer.isValid()) {
             settingServer.send(500, "text/html; charset=utf-8", "{\"error\":\"内存分配失败\"}");
-            return " ";
+            return;
         }
-        
+
         int rc = zt.gunzip(compressedBuffer.get(), iCount, uncompressedBuffer.get());
         if (rc != ZT_SUCCESS) {
-            settingServer.send(500, "text/html; charset=utf-8", "{\"error\":\"Gzip解压失败，错误代码：" + String(rc) + "\"}");
-            return " ";
+            char errBuf[96];
+            snprintf(errBuf, sizeof(errBuf), "{\"error\":\"Gzip解压失败，错误代码：%d\"}", rc);
+            settingServer.send(500, "text/html; charset=utf-8", errBuf);
+            return;
         }
-        jsonData = String((char *)uncompressedBuffer.get(), uncompSize);
+        jsonData = (char*)uncompressedBuffer.get();
+        jsonDataLen = uncompSize;
         // uncompressedBuffer 会在作用域结束时自动释放
     } else {
-        jsonData = String((char *)compressedBuffer.get(), iCount);
+        jsonData = (char*)compressedBuffer.get();
+        jsonDataLen = iCount;
     }
     // compressedBuffer 会在作用域结束时自动释放
 
     JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, jsonData);
+    DeserializationError error = deserializeJson(doc, jsonData, jsonDataLen);
     if (error) {
-        LOG_WEATHER_ERROR("City search JSON parse failed: " + String(error.c_str()));
+        LOG_WEATHER_ERROR("City search JSON parse failed: %s", error.c_str());
         settingServer.send(500, "text/html; charset=utf-8", "{\"error\":\"JSON解析失败\"}");
-        return " ";
+        return;
     }
-    
+
     LOG_WEATHER_DEBUG("City search JSON parsed successfully");
-    LOG_WEATHER_DEBUG("JSON response: " + jsonData);
-    
+
     // 检查API响应状态
-    if (doc["code"].as<String>() != "200") {
-        String code = doc["code"].as<String>();
-        LOG_WEATHER_WARN("City search API error code: " + code);
-        settingServer.send(500, "text/html; charset=utf-8", "{\"error\":\"API错误，错误代码：" + code + "\"}");
-        return " ";
+    const char* codeStr = doc["code"].as<const char*>("");
+    if (strcmp(codeStr, "200") != 0) {
+        LOG_WEATHER_WARN("City search API error code: %s", codeStr);
+        char errBuf[96];
+        snprintf(errBuf, sizeof(errBuf), "{\"error\":\"API错误，错误代码：%s\"}", codeStr);
+        settingServer.send(500, "text/html; charset=utf-8", errBuf);
+        return;
     }
-    
+
     // 检查location字段是否存在且为数组
     if (!doc["location"].is<JsonArray>()) {
         LOG_WEATHER_WARN("City search response: location field missing or not array");
         settingServer.send(500, "text/html; charset=utf-8", "{\"error\":\"API响应格式错误，缺少 location 字段\"}");
-        return " ";
+        return;
     }
     JsonArray locArr = doc["location"].as<JsonArray>();
-    LOG_WEATHER_INFO("City search found " + String(locArr.size()) + " cities");
-    
+    LOG_WEATHER_INFO("City search found %u cities", locArr.size());
+
     if (locArr.size() == 0) {
         settingServer.send(200, "application/json; charset=utf-8", "{\"success\":true,\"results\":[]}");
-        return " ";
+        return;
     }
 
-    for (JsonObject obj : locArr) {
-        String name = obj["name"].as<String>();
-        String adm1 = obj["adm1"].as<String>();
-        String country = obj["country"].as<String>();
-        String locid = obj["id"].as<String>();
-    }
-    // 发送响应JSON
-    String json = "{";
-    json += "\"success\":true,";
-    json += "\"results\":[";
+    // 发送响应JSON - 使用大缓冲区
+    static char jsonBuf[2048];
+    size_t pos = 0;
+    pos += snprintf(jsonBuf + pos, sizeof(jsonBuf) - pos, "{\"success\":true,\"results\":[");
 
-    for (size_t i = 0; i < locArr.size(); ++i) {
+    for (size_t i = 0; i < locArr.size() && pos < sizeof(jsonBuf) - 1; ++i) {
         JsonObject obj = locArr[i];
-        String name = obj["name"].as<String>();
-        String adm1 = obj["adm1"].as<String>();
-        String country = obj["country"].as<String>();
-        String locid = obj["id"].as<String>();
-        String fxlink = obj["fxLink"].as<String>();
+        const char* name = obj["name"].as<const char*>("");
+        const char* adm1 = obj["adm1"].as<const char*>("");
+        const char* country = obj["country"].as<const char*>("");
+        const char* locid = obj["id"].as<const char*>("");
+        const char* fxlink = obj["fxLink"].as<const char*>("");
 
-        json += "{";
-        json += "\"name\":\"" + name + "\",";
-        json += "\"adm1\":\"" + adm1 + "\",";
-        json += "\"country\":\"" + country + "\",";
-        json += "\"locid\":\"" + locid + "\",";
-        json += "\"fxlink\":\"" + fxlink + "\"";
-        json += "}";
-
-        if (i != locArr.size() - 1) json += ",";
+        pos += snprintf(jsonBuf + pos, sizeof(jsonBuf) - pos,
+            "{\"name\":\"%s\",\"adm1\":\"%s\",\"country\":\"%s\",\"locid\":\"%s\",\"fxlink\":\"%s\"}%s",
+            name, adm1, country, locid, fxlink,
+            (i != locArr.size() - 1) ? "," : "");
     }
 
-    json += "]";
-    json += "}";
+    pos += snprintf(jsonBuf + pos, sizeof(jsonBuf) - pos, "]}");
 
-    LOG_WEATHER_DEBUG("City search result JSON: " + json);
-    return json;
+    LOG_WEATHER_DEBUG("City search result JSON: %s", jsonBuf);
+    // 复制到全局结果缓冲区
+    strlcpy(citySearchResultJson, jsonBuf, sizeof(citySearchResultJson));
 }
 
 enum FetchCitySearchState {
@@ -650,7 +633,7 @@ enum FetchCitySearchState {
     COMPLETED
 };
 FetchCitySearchState citySearchState = IDLE;
-String citySearchResultJson = "";
+char citySearchResultJson[2048] = "";
 
 void webSettingHandleCitySearchResult() {
     if(citySearchState == IDLE){
@@ -660,20 +643,21 @@ void webSettingHandleCitySearchResult() {
         }
         citySearchState = FETCHING;
         settingServer.send(202, "application/json; charset=utf-8", "{\"status\":\"processing\"}");
-        String location = settingServer.arg("location");
+        // 复制location到堆上
+        char* locCopy = strdup(settingServer.arg("location").c_str());
         xTaskCreate([](void* param) {
-            String loc = *((String*)param);
-            LOG_WEATHER_DEBUG("City search task started for location: " + loc);
-            citySearchResultJson = fetchCitySearchResult(loc);
+            char* loc = (char*)param;
+            LOG_WEATHER_DEBUG("City search task started for location: %s", loc);
+            fetchCitySearchResult(loc);
             citySearchState = COMPLETED;
-            delete (String*)param;
+            free(loc);
             vTaskDelete(NULL);
-        }, "CitySearchTask", 16384, new String(location), 2, NULL);
-    } 
+        }, "CitySearchTask", 16384, locCopy, 2, NULL);
+    }
     else if(citySearchState == COMPLETED){
         settingServer.send(200, "application/json; charset=utf-8", citySearchResultJson);
         citySearchState = IDLE;
-        citySearchResultJson = "";
+        citySearchResultJson[0] = '\0';
     }
     else if(citySearchState == FETCHING){
         settingServer.send(202, "application/json; charset=utf-8", "{\"status\":\"processing\"}");
@@ -681,8 +665,6 @@ void webSettingHandleCitySearchResult() {
     else {
         settingServer.send(429, "application/json; charset=utf-8", "{\"error\":\"正在处理另一个请求，请稍后再试\"}");
     }
-
-    String location = settingServer.arg("location");
 }
 
 void webSettingHandleSetLocation() {
@@ -694,36 +676,48 @@ void webSettingHandleSetLocation() {
         settingServer.send(400, "text/html; charset=utf-8", "参数错误");
         return;
     }
-    String locid = settingServer.arg("locid");
-    locid.trim();
+    char locid[32];
+    strlcpy(locid, settingServer.arg("locid").c_str(), sizeof(locid));
+    // 去除首尾空格
+    char* start = locid;
+    while (*start == ' ') start++;
+    if (start != locid) memmove(locid, start, strlen(start) + 1);
+    size_t len = strlen(locid);
+    while (len > 0 && locid[len - 1] == ' ') {
+        locid[--len] = '\0';
+    }
 
-    String cityname = "";
+    char cityname[32] = "";
     if (settingServer.hasArg("fxlink")) {
-        String fxlink = settingServer.arg("fxlink");
-        int start = fxlink.indexOf("/weather/");
-        int end = fxlink.lastIndexOf("-");
-        if (start != -1 && end != -1 && end > start+9) {
-            cityname = fxlink.substring(start+9, end);
+        const char* fxlink = settingServer.arg("fxlink").c_str();
+        const char* weatherStart = strstr(fxlink, "/weather/");
+        const char* lastDash = strrchr(fxlink, '-');
+        if (weatherStart && lastDash && lastDash > weatherStart + 9) {
+            size_t nameLen = lastDash - (weatherStart + 9);
+            if (nameLen < sizeof(cityname)) {
+                strncpy(cityname, weatherStart + 9, nameLen);
+                cityname[nameLen] = '\0';
+            }
         }
     }
     else{
         LOG_WEATHER_INFO("No fxlink provided, using locid as city name");
-        cityname = locid;
+        strlcpy(cityname, locid, sizeof(cityname));
     }
-    
+
     // 保存到配置文件（追加或覆盖）
     qweatherAuthConfigManager.setLocation(locid, cityname);
-    
-    locid = qweatherAuthConfigManager.getLocation().c_str();
-    cityname = qweatherAuthConfigManager.getCityName().c_str();
 
     loadJwtConfig();
 
     weatherSynced = false;
     isReadyToDisplay = false;
 
-    LOG_WEATHER_INFO("Location set to ID: %s, Name: %s", locid.c_str(), cityname.c_str());
-    settingServer.send(200, "application/json; charset=utf-8", "{\"ok\":true,\"locid\":\"" + locid + "\"}");
+    LOG_WEATHER_INFO("Location set to ID: %s, Name: %s",
+        qweatherAuthConfigManager.getLocation(), qweatherAuthConfigManager.getCityName());
+    char resp[96];
+    snprintf(resp, sizeof(resp), "{\"ok\":true,\"locid\":\"%s\"}", qweatherAuthConfigManager.getLocation());
+    settingServer.send(200, "application/json; charset=utf-8", resp);
 }
 
 void webSettingSetupWebServer() {
@@ -758,15 +752,16 @@ void webSettingSetupWebServer() {
     settingServer.on("/ota", webSettingHandleOTA);                         // OTA页面
     settingServer.on("/ota/url", webSettingHandleOTAURL);                  // OTA URL处理
     settingServer.on("/ota/progress", webSettingHandleOTAProgress);        // OTA进度查询
-    settingServer.on("/ota/upload", HTTP_POST, 
-        []() { 
+    settingServer.on("/ota/upload", HTTP_POST,
+        []() {
             // 处理完成后的回调
             if (otaUploadSuccess) {
                 settingServer.send(200, "application/json", "{\"success\":true}");
             } else {
-                String errorMsg = Update.hasError() ? String(Update.errorString()) : "上传失败";
-                settingServer.send(500, "application/json", 
-                    "{\"success\":false,\"error\":\"" + errorMsg + "\"}");
+                char errBuf[128];
+                snprintf(errBuf, sizeof(errBuf), "{\"success\":false,\"error\":\"%s\"}",
+                    Update.hasError() ? Update.errorString() : "上传失败");
+                settingServer.send(500, "application/json", errBuf);
             }
             otaUploadSuccess = false;  // 重置标志
         },
@@ -791,11 +786,10 @@ void webSettingSetupWebServer() {
     
     settingServer.begin();
     LOG_WEATHER_INFO("Web configuration server started, access via IP address");
-    
+
     // 获取当前IP地址并显示
-    String ipAddress = WiFi.localIP().toString();
     lcdText("Config Mode", 1);
-    lcdText(ipAddress.c_str(), 2);
+    lcdText(WiFi.localIP().toString().c_str(), 2);
     while(isConfigDone == false){
         settingServer.handleClient();
         WAIT_MS(1);

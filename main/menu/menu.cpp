@@ -168,8 +168,11 @@ void enterWirelessScreenInterface(){
     else{
         server.begin();
         LOG_MENU_INFO("Wireless screen ensured TCP server on port %d", CONNECT_PORT);
-        lcdText("SSID:" + wifiConfigManager.getSSID(),1);
-        lcdText("IP:" + WiFi.localIP().toString(),2);
+        char lcdBuf[17];
+        snprintf(lcdBuf, sizeof(lcdBuf), "SSID:%s", wifiConfigManager.getSSID());
+        lcdText(lcdBuf, 1);
+        snprintf(lcdBuf, sizeof(lcdBuf), "IP:%s", WiFi.localIP().toString().c_str());
+        lcdText(lcdBuf, 2);
     }
 }
 

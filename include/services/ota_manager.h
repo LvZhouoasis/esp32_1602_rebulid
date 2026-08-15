@@ -50,7 +50,7 @@ void otaInit();
  * @param useHTTPS 是否使用 HTTPS
  * @return 升级结果
  */
-OTAResult otaUpdateFromURL(const String& url, bool useHTTPS = false);
+OTAResult otaUpdateFromURL(const char* url, bool useHTTPS = false);
 
 /**
  * @brief 从文件数据更新固件
@@ -70,13 +70,13 @@ int otaGetProgress();
  * @brief 获取错误信息
  * @return 错误描述字符串
  */
-String otaGetErrorString();
+const char* otaGetErrorString();
 
 /**
  * @brief 检查版本更新
  * @param versionCheckURL 版本检查 URL
  */
-void otaCheckForUpdate(const String& versionCheckURL);
+void otaCheckForUpdate(const char* versionCheckURL);
 
 /**
  * @brief 获取当前状态

@@ -302,14 +302,14 @@ void setup() {
     // 初始化配置管理器
     if(!wifiConfigManager.init()){ 
         LOG_SYSTEM_ERROR("WiFi config manager initialization failed!");
-        LOG_SYSTEM_ERROR("Last error: %s", wifiConfigManager.getLastErrorString(wifiConfigManager.getLastError()).c_str());
+        LOG_SYSTEM_ERROR("Last error: %s", wifiConfigManager.getLastErrorString(wifiConfigManager.getLastError()));
         fatalError("WiFi config init failed"); 
     }
     
     // 初始化和风天气配置管理器
     if(!qweatherAuthConfigManager.init()){ 
         LOG_SYSTEM_ERROR("QWeather config manager initialization failed!");
-        LOG_SYSTEM_ERROR("Last error: %s", qweatherAuthConfigManager.getLastErrorString(qweatherAuthConfigManager.getLastError()).c_str());
+        LOG_SYSTEM_ERROR("Last error: %s", qweatherAuthConfigManager.getLastErrorString(qweatherAuthConfigManager.getLastError()));
         fatalError("QWeather auth config init failed"); 
     }
 

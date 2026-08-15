@@ -1,4 +1,5 @@
 #include "./connectivity/wifi_config.h"
+#include <cstring>
 
 extern WifiConfigManager wifiConfigManager;
 
@@ -47,10 +48,10 @@ void ensureTimeSyncTaskRunning() {
 
 // 扫描状态
 WifiScanState wifiScanState = WIFI_SCAN_IDLE;
-String scanResult = "";
+char scanResult[1024] = "";
 
 // 保存WiFi信息
-void _saveWiFiCredentials(const String& ssid, const String& password) {
+void _saveWiFiCredentials(const char* ssid, const char* password) {
 	wifiConfigManager.setSSID(ssid);
 	wifiConfigManager.setPassword(password);
 
@@ -83,22 +84,23 @@ void wifiScanhandler(){
         xTaskCreate([](void*){
             int n = WiFi.scanNetworks();
             LOG_NETWORK_INFO("Find %d WiFi!", n);
-            
-            scanResult = "{\"status\":\"done\",\"networks\":[";
-            
-            for (int i = 0; i < n; ++i) {
-                scanResult += "{\"ssid\":\"" + WiFi.SSID(i) + 
-							  "\",\"rssi\":" + String(WiFi.RSSI(i)) + 
-							  ",\"secure\":" + ((WiFi.encryptionType(i) != WIFI_AUTH_OPEN) ? "true" : "false") + 
-							  "}";
-                if (i != n - 1) {
-                    scanResult += ",";
-                }
+
+            size_t pos = 0;
+            pos += snprintf(scanResult + pos, sizeof(scanResult) - pos, "{\"status\":\"done\",\"networks\":[");
+
+            for (int i = 0; i < n && pos < sizeof(scanResult) - 1; ++i) {
+                char ssidBuf[33];
+                strlcpy(ssidBuf, WiFi.SSID(i).c_str(), sizeof(ssidBuf));
+                pos += snprintf(scanResult + pos, sizeof(scanResult) - pos,
+                    "{\"ssid\":\"%s\",\"rssi\":%d,\"secure\":%s}%s",
+                    ssidBuf, WiFi.RSSI(i),
+                    (WiFi.encryptionType(i) != WIFI_AUTH_OPEN) ? "true" : "false",
+                    (i != n - 1) ? "," : "");
             }
-            
-            scanResult += "]}";
+
+            pos += snprintf(scanResult + pos, sizeof(scanResult) - pos, "]}");
             wifiScanState = WIFI_SCAN_DONE;
-			LOG_NETWORK_DEBUG(scanResult.c_str());
+			LOG_NETWORK_DEBUG("%s", scanResult);
             vTaskDelete(NULL);
         }, "ScanTask", 4096, NULL, 1, NULL);
     } 
@@ -107,9 +109,9 @@ void wifiScanhandler(){
         if (wifiScanState != WIFI_SCAN_DONE) {
 			LOG_NETWORK_DEBUG("send HTTP 202 scanning");
             apServer.send(202, "application/json", "{\"status\":\"scanning\"}");
-        } else if (scanResult != "") {
+        } else if (scanResult[0] != '\0') {
             apServer.send(200, "application/json", scanResult);
-            scanResult = "";
+            scanResult[0] = '\0';
         } else {
 			LOG_NETWORK_DEBUG("send HTTP 500 (no results)");
             apServer.send(500, "application/json", "{\"error\":\"no result\"}");
@@ -119,10 +121,10 @@ void wifiScanhandler(){
 }
 
 void wifiSethandler(){
-	String ssid = apServer.arg("ssid");
-	String password = apServer.arg("password");
+	const char* ssid = apServer.arg("ssid").c_str();
+	const char* password = apServer.arg("password").c_str();
 	LOG_NETWORK_INFO("access /wifi_set");
-	LOG_NETWORK_INFO("ssid: %s", ssid.c_str());
+	LOG_NETWORK_INFO("ssid: %s", ssid);
 	_saveWiFiCredentials(ssid, password);
 	apServer.send(200, "application/json", "{\"success\":true}");
 	// 不在回调内直接 restart，否则 WiFi AP/STA 事件会在重启过程中乱序触发导致卡死
@@ -145,7 +147,9 @@ void enterConfigMode() {
 
 	// 捕获所有DNS请求并重定向到配网页面
 	apServer.onNotFound([](){
-		apServer.sendHeader("Location", "http://" + WiFi.softAPIP().toString(), true);
+		char location[32];
+		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString().c_str());
+		apServer.sendHeader("Location", location, true);
 		apServer.send(302, "text/plain", "");
 	});
 
@@ -161,25 +165,33 @@ void enterConfigMode() {
 	// 常见的强制门户检测端点
 	// Android 设备检测
 	apServer.on("/generate_204", [](){
-		apServer.sendHeader("Location", "http://" + WiFi.softAPIP().toString(), true);
+		char location[32];
+		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString().c_str());
+		apServer.sendHeader("Location", location, true);
 		apServer.send(302, "text/plain", "");
 	});
-	
+
 	// iOS 设备检测
 	apServer.on("/hotspot-detect.html", [](){
-		apServer.sendHeader("Location", "http://" + WiFi.softAPIP().toString(), true);
+		char location[32];
+		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString().c_str());
+		apServer.sendHeader("Location", location, true);
 		apServer.send(302, "text/plain", "");
 	});
-	
+
 	// Windows 设备检测
 	apServer.on("/ncsi.txt", [](){
-		apServer.sendHeader("Location", "http://" + WiFi.softAPIP().toString(), true);
+		char location[32];
+		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString().c_str());
+		apServer.sendHeader("Location", location, true);
 		apServer.send(302, "text/plain", "");
 	});
-	
+
 	// 通用重定向端点
 	apServer.on("/redirect", [](){
-		apServer.sendHeader("Location", "http://" + WiFi.softAPIP().toString(), true);
+		char location[32];
+		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString().c_str());
+		apServer.sendHeader("Location", location, true);
 		apServer.send(302, "text/plain", "");
 	});
 
@@ -187,7 +199,9 @@ void enterConfigMode() {
 
 	// 在屏幕上显示ip
 	lcdText("Connect to AP",1);
-	lcdText("IP:" + WiFi.softAPIP().toString(),2);
+	char ipBuf[17];
+	snprintf(ipBuf, sizeof(ipBuf), "IP:%s", WiFi.softAPIP().toString().c_str());
+	lcdText(ipBuf, 2);
 }
 
 // WiFi连接后台任务
@@ -206,7 +220,7 @@ void wifiConnectTask(void* parameter) {
 	// 连接期间关闭省电，避免连接抖动/状态不同步
 	WiFi.setSleep(false);
 	
-	WiFi.begin(wifiConfigManager.getSSID().c_str(), wifiConfigManager.getPassword().c_str());
+	WiFi.begin(wifiConfigManager.getSSID(), wifiConfigManager.getPassword());
 	
 	unsigned long startTime = GET_MS();
 	int fadeStep = 2;
@@ -269,7 +283,7 @@ void wifiConnectTask(void* parameter) {
 		server.begin();
 		LOG_WIFI_INFO("TCP server started on port %d", CONNECT_PORT);
 
-		LOG_WIFI_INFO("connected: %s", wifiConfigManager.getSSID().c_str());
+		LOG_WIFI_INFO("connected: %s", wifiConfigManager.getSSID());
 		LOG_WIFI_INFO("IP: %s", WiFi.localIP().toString().c_str());
 		LOG_WIFI_DEBUG("starting background time sync...");
 
@@ -297,7 +311,7 @@ void wifiConnectTask(void* parameter) {
 }
 
 void connectToWiFi() {
-		if(wifiConfigManager.getSSID() == ""){
+		if(strlen(wifiConfigManager.getSSID()) == 0){
 			LOG_WIFI_WARN("config not found");
 			wifiConnectionState = WIFI_FAILED;
 			updateColor(CRGB::Red);  		// 无配置红灯

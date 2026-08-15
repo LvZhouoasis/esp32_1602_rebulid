@@ -337,7 +337,7 @@ void lcdClear(){
 // 光标向后移动一格
 void _nextCursor(){
     if (lcdCursor >= LCD_DDRAM_SIZE) {
-        LOG_LCD_WARN("LCD cursor out of bounds: " + String(lcdCursor));
+        LOG_LCD_WARN("LCD cursor out of bounds: %d", lcdCursor);
         lcdCursor = LCD_DDRAM_SIZE;   // 将光标设置为显示区域外
         return;
     }

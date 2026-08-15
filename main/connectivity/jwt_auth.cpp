@@ -16,18 +16,12 @@ uint8_t seed32[32] = {};
 // 初始化 JWT 配置
 void loadJwtConfig() {
     qweatherAuthConfigManager.loadConfig();
-    strncpy(apiHost, qweatherAuthConfigManager.getApiHost().c_str(), sizeof(apiHost) - 1);
-    apiHost[sizeof(apiHost) - 1] = '\0';
-    strncpy(kid,  qweatherAuthConfigManager.getKId().c_str(), sizeof(kid) - 1);
-    kid[sizeof(kid) - 1] = '\0';
-    strncpy(projectID, qweatherAuthConfigManager.getProjectID().c_str(), sizeof(projectID) - 1);
-    projectID[sizeof(projectID) - 1] = '\0';
-    strncpy(base64Key, qweatherAuthConfigManager.getBase64Key().c_str(), sizeof(base64Key) - 1);
-    base64Key[sizeof(base64Key) - 1] = '\0';
-    strncpy(location, qweatherAuthConfigManager.getLocation().c_str(), sizeof(location) - 1);
-    location[sizeof(location) - 1] = '\0';
-    strncpy(cityName, qweatherAuthConfigManager.getCityName().c_str(), sizeof(cityName) - 1);
-    cityName[sizeof(cityName) - 1] = '\0';
+    strlcpy(apiHost, qweatherAuthConfigManager.getApiHost(), sizeof(apiHost));
+    strlcpy(kid, qweatherAuthConfigManager.getKId(), sizeof(kid));
+    strlcpy(projectID, qweatherAuthConfigManager.getProjectID(), sizeof(projectID));
+    strlcpy(base64Key, qweatherAuthConfigManager.getBase64Key(), sizeof(base64Key));
+    strlcpy(location, qweatherAuthConfigManager.getLocation(), sizeof(location));
+    strlcpy(cityName, qweatherAuthConfigManager.getCityName(), sizeof(cityName));
 
     LOG_JWT_INFO("JWT config loaded");
     LOG_JWT_DEBUG("apiHost: %s", apiHost);
@@ -122,46 +116,63 @@ void generateSeed32() {
 }
 
 // Base64 URL-safe编码
-String _base64url_encode(const uint8_t* data, size_t len) {
-    String b64 = "";
+size_t _base64url_encode(const uint8_t* data, size_t len, char* output, size_t outputSize) {
     const char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    size_t outLen = 0;
     int val = 0, valb = -6;             // 累积的位值和位数
     for (size_t i = 0; i < len; i++) {
         val = (val << 8) + data[i];     // 添加8位待编码的值
         valb += 8;
         while (valb >= 0) {
-            b64 += table[(val >> valb) & 0x3F]; // 提取6位进行编码
+            if (outLen < outputSize - 1) {
+                output[outLen++] = table[(val >> valb) & 0x3F]; // 提取6位进行编码
+            }
             valb -= 6;
         }
     }
-    if (valb > -6) b64 += table[((val << 8) >> (valb + 8)) & 0x3F]; // 处理长度不足 3 字节倍数的数据，不足的 4 位或 2 位填充 0
-    // Base64 URL-safe不添加'='
-
-    return b64;
+    if (valb > -6 && outLen < outputSize - 1) {
+        output[outLen++] = table[((val << 8) >> (valb + 8)) & 0x3F];
+    }
+    output[outLen] = '\0';
+    return outLen;
 }
 
 // 生成JWT Token
-String generate_jwt(const String& kid, const String& projectID, const uint8_t* seed32) {
+size_t generate_jwt(const char* kid, const char* projectID, const uint8_t* seed32, char* output, size_t outputSize) {
     // 去掉前后空格
-    String kid_trimmed = kid;
-    kid_trimmed.trim();
-    String project_trimmed = projectID;
-    project_trimmed.trim();
+    char kid_trimmed[64];
+    char project_trimmed[64];
+    strlcpy(kid_trimmed, kid, sizeof(kid_trimmed));
+    strlcpy(project_trimmed, projectID, sizeof(project_trimmed));
+
+    // 去除首尾空格
+    auto trimStr = [](char* str) {
+        char* start = str;
+        while (*start == ' ') start++;
+        if (start != str) memmove(str, start, strlen(start) + 1);
+        size_t len = strlen(str);
+        while (len > 0 && str[len - 1] == ' ') {
+            str[--len] = '\0';
+        }
+    };
+    trimStr(kid_trimmed);
+    trimStr(project_trimmed);
 
     // Header（只含alg和kid）
     JsonDocument header;
     header["alg"] = "EdDSA";
     header["kid"] = kid_trimmed;    // 凭据ID
-    String header_json;
-    serializeJson(header, header_json);
-    LOG_JWT_DEBUG("Header: %s", header_json.c_str());
-    String header_b64 = _base64url_encode((const uint8_t*)header_json.c_str(), header_json.length());
+    char header_json[128];
+    serializeJson(header, header_json, sizeof(header_json));
+    LOG_JWT_DEBUG("Header: %s", header_json);
+    char header_b64[256];
+    _base64url_encode((const uint8_t*)header_json, strlen(header_json), header_b64, sizeof(header_b64));
 
     // Payload（只含sub、iat、exp）
     JsonDocument payload;
     payload["sub"] = project_trimmed;  // 签发主体：项目ID
     unsigned long now = time(nullptr);
-    
+
     // 检查时间是否已同步
     if (now < 1762255390) {         // 2025年11月04日的时间戳
         LOG_JWT_ERROR("time not synced!,check NTP settings.");      // 即使时间不对，也继续生成JWT
@@ -171,57 +182,51 @@ String generate_jwt(const String& kid, const String& projectID, const uint8_t* s
         strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", timeinfo);
         LOG_JWT_DEBUG("Time: %s", timeStr);
     }
-    
+
     unsigned long iat = now - 30;       // 签发时间：当前时间前30秒
     unsigned long exp = now + 3600;     // 有效期1H
-    
+
     payload["iat"] = iat;
     payload["exp"] = exp;
-    
+
     LOG_JWT_VERBOSE("iat: %lu, exp: %lu", iat, exp);
-    String payload_json;
-    serializeJson(payload, payload_json);   
-    LOG_JWT_DEBUG("Payload: %s", payload_json.c_str());
-    String payload_b64 = _base64url_encode((const uint8_t*)payload_json.c_str(), payload_json.length());
+    char payload_json[128];
+    serializeJson(payload, payload_json, sizeof(payload_json));
+    LOG_JWT_DEBUG("Payload: %s", payload_json);
+    char payload_b64[256];
+    _base64url_encode((const uint8_t*)payload_json, strlen(payload_json), payload_b64, sizeof(payload_b64));
 
     // 使用Ed25519算法对header.payload进行签名
-    String signing_input = header_b64 + "." + payload_b64;
-    LOG_JWT_VERBOSE("Signing input: %s", signing_input.c_str());
-    
+    char signing_input[512];
+    snprintf(signing_input, sizeof(signing_input), "%s.%s", header_b64, payload_b64);
+    LOG_JWT_VERBOSE("Signing input: %s", signing_input);
+
     // 从seed生成Ed25519密钥对
     // pk：生成的 32 字节公钥
     // sk：生成的 64 字节私钥
     uint8_t pk[crypto_sign_PUBLICKEYBYTES], sk[crypto_sign_SECRETKEYBYTES];
     crypto_sign_seed_keypair(pk, sk, seed32);
-    
-    // 打印公钥用于调试
-    // LOG_JWT_DEBUG("Public key: ");
-    // for(int i = 0; i < 8; i++) { // 只打印前8字节
-    //     Serial.printf("%02X", pk[i]);
-    // }
-    // Serial.println("...");
-    
+
     // 使用Ed25519算法生成分离签名
     uint8_t signature[crypto_sign_BYTES];
     unsigned long long siglen;
     crypto_sign_detached(
-        signature, 
+        signature,
         &siglen,
-        (const unsigned char*)signing_input.c_str(), 
-        signing_input.length(), 
+        (const unsigned char*)signing_input,
+        strlen(signing_input),
         sk          // 上一步生成的64字节私钥
     );
-    
-    // LOG_JWT_DEBUG("Signature length: %llu", siglen);
 
     // 对签名进行Base64URL编码
-    String signature_b64 = _base64url_encode(signature, siglen);
+    char signature_b64[128];
+    _base64url_encode(signature, siglen, signature_b64, sizeof(signature_b64));
 
     // 拼接最终JWT (header.payload.signature)
-    String jwt = signing_input + "." + signature_b64;
-    LOG_JWT_DEBUG("JWT token generated successfully, length: %d", jwt.length());
-    LOG_JWT_VERBOSE("Final JWT: %s", jwt.c_str());
-    return jwt;
+    size_t jwtLen = snprintf(output, outputSize, "%s.%s", signing_input, signature_b64);
+    LOG_JWT_DEBUG("JWT token generated successfully, length: %d", jwtLen);
+    LOG_JWT_VERBOSE("Final JWT: %s", output);
+    return jwtLen;
 }
 
 // 检查私钥是否有效

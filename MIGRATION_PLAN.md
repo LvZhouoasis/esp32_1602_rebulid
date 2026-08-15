@@ -480,11 +480,11 @@ s.toUpperCase();
 
 ---
 
-### ⏳ 阶段 3 进行中
+### ✅ 阶段 3：String 类替换（最大改动）
 
-**完成日期**：2026-08-15（部分完成）
+**完成日期**：2026-08-15
 
-**已处理文件**（14个）：
+**已处理文件**（27个，全部完成）：
 1. ✅ `include/utils/logger.h` - 移除 String 类型函数声明
 2. ✅ `main/utils/logger.cpp` - 移除 String 类型函数实现
 3. ✅ `include/services/kanamap.h` - String 数组改为 const char*
@@ -499,25 +499,27 @@ s.toUpperCase();
 12. ✅ `main/menu/menu.cpp` - String 改为 const char*
 13. ✅ `main/main.cpp` - String 拼接改为 snprintf
 14. ✅ `include/services/config_manager.h` - 函数参数改为 const char*
+15. ✅ `main/services/config_manager.cpp` - readFile/writeFile 重写为 char 缓冲区
+16. ✅ `include/services/wifi_config_manager.h` - 成员改为 char 数组
+17. ✅ `main/services/wifi_config_manager.cpp` - 使用 strlcpy/char 缓冲区
+18. ✅ `include/services/qweather_auth_config_manager.h` - 成员改为 char 数组
+19. ✅ `main/services/qweather_auth_config_manager.cpp` - 使用 strlcpy/char 缓冲区
+20. ✅ `include/connectivity/jwt_auth.h` - generate_jwt 改为输出缓冲区模式
+21. ✅ `main/connectivity/jwt_auth.cpp` - 完全重写为 C 风格字符串
+22. ✅ `include/services/ota_manager.h` - 函数参数改为 const char*
+23. ✅ `main/services/ota_manager.cpp` - 使用 snprintf/char 缓冲区
+24. ✅ `main/connectivity/wifi_config.cpp` - 使用 snprintf/char 缓冲区
+25. ✅ `main/applications/weather.cpp` - 全局变量改为 char 数组，JSON 解析改为 const char*
+26. ✅ `main/services/web_setting.cpp` - 99处全部改为 snprintf/char 缓冲区
 
-**待处理文件**（12个）：
-- ⏳ `main/services/config_manager.cpp` - 复杂，需要重写 readFile/writeFile
-- ⏳ `include/services/wifi_config_manager.h` - 函数参数需要修改
-- ⏳ `main/services/wifi_config_manager.cpp` - 复杂，需要重写
-- ⏳ `include/services/qweather_auth_config_manager.h` - 函数参数需要修改
-- ⏳ `main/services/qweather_auth_config_manager.cpp` - 复杂，需要重写
-- ⏳ `main/applications/weather.cpp` - 非常复杂（34处），需要大量修改
-- ⏳ `main/services/web_setting.cpp` - 非常复杂（99处），需要大量修改
-- ⏳ `include/connectivity/jwt_auth.h` - 函数参数需要修改
-- ⏳ `main/connectivity/jwt_auth.cpp` - 复杂（12处），需要大量修改
-- ⏳ `include/services/ota_manager.h` - 函数参数需要修改
-- ⏳ `main/services/ota_manager.cpp` - 复杂（12处），需要大量修改
-- ⏳ `main/connectivity/wifi_config.cpp` - 复杂（14处），需要大量修改
-
-**说明**：
-- 阶段3工作量巨大（286处修改），已完成约40%
-- 剩余文件多为复杂的服务层和网络层代码
-- 需要继续分批处理
+**替换模式总结**：
+- `String` → `char[]` + `strlcpy()`/`snprintf()`
+- `String.concat()` → `snprintf()`
+- `String.indexOf()` → `strstr()`/`strchr()`
+- `String.substring()` → `strncpy()` + 手动偏移
+- `String.trim()` → 自定义 lambda 去除首尾空格
+- `String.c_str()` → 直接使用 `const char*`
+- `generate_jwt()` → 输出缓冲区模式，返回 `size_t`
 
 ---
 
@@ -854,7 +856,7 @@ esp_pm_configure(&pm_config);
 |------|------|------|------|------|
 | 1 | 构建系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
 | 2 | 核心头文件重构 | 1 天 | ★☆☆ | ✅ 已完成 |
-| 3 | String 类替换 | 5-7 天 | ★★★ | ⏳ 进行中（40%） |
+| 3 | String 类替换 | 5-7 天 | ★★★ | ✅ 已完成 |
 | 4 | GPIO 和硬件抽象层 | 1-2 天 | ★★☆ | ⏳ 待执行 |
 | 5 | I2C 通信迁移 | 2-3 天 | ★★☆ | ⏳ 待执行 |
 | 6 | SPIFFS 文件系统迁移 | 2-3 天 | ★★☆ | ⏳ 待执行 |
