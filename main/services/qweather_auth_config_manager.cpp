@@ -1,22 +1,27 @@
 #include "./services/qweather_auth_config_manager.h"
 
-QWeatherAuthConfigManager::QWeatherAuthConfigManager(const String& configFilePath) 
-    : ConfigManager(configFilePath), 
-    apiHost(""), kId(""), projectID(""), base64Key(""), location(""), cityName("") 
+QWeatherAuthConfigManager::QWeatherAuthConfigManager(const char* configFilePath)
+    : ConfigManager(configFilePath)
     {
-    LOG_CONFIG_DEBUG("QWeatherAuthConfigManager initialized with config file: %s", configFilePath.c_str());
+    apiHost[0] = '\0';
+    kId[0] = '\0';
+    projectID[0] = '\0';
+    base64Key[0] = '\0';
+    location[0] = '\0';
+    cityName[0] = '\0';
+    LOG_CONFIG_DEBUG("QWeatherAuthConfigManager initialized with config file: %s", configFilePath);
 }
 
 QWeatherAuthConfigManager::~QWeatherAuthConfigManager() {
     LOG_CONFIG_DEBUG("QWeatherAuthConfigManager destroyed");
 }
 
-String QWeatherAuthConfigManager::getApiHost() {return apiHost;}
-String QWeatherAuthConfigManager::getKId() {return kId;}
-String QWeatherAuthConfigManager::getProjectID() {return projectID;}
-String QWeatherAuthConfigManager::getBase64Key() {return base64Key;}
-String QWeatherAuthConfigManager::getLocation() {return location;}
-String QWeatherAuthConfigManager::getCityName() {return cityName;}
+const char* QWeatherAuthConfigManager::getApiHost() {return apiHost;}
+const char* QWeatherAuthConfigManager::getKId() {return kId;}
+const char* QWeatherAuthConfigManager::getProjectID() {return projectID;}
+const char* QWeatherAuthConfigManager::getBase64Key() {return base64Key;}
+const char* QWeatherAuthConfigManager::getLocation() {return location;}
+const char* QWeatherAuthConfigManager::getCityName() {return cityName;}
 
 bool QWeatherAuthConfigManager::init() {
     if(!loadConfig()){
@@ -30,7 +35,7 @@ bool QWeatherAuthConfigManager::init() {
             return false;
         }
         else{
-            LOG_CONFIG_ERROR("Failed to load QWeather auth config with error: %s", getLastErrorString(lastError).c_str());
+            LOG_CONFIG_ERROR("Failed to load QWeather auth config with error: %s", getLastErrorString(lastError));
             setLastQWeatherError(QWeatherError::ConfigFileError);
             return false;
         }
@@ -39,14 +44,14 @@ bool QWeatherAuthConfigManager::init() {
 }
 
 bool QWeatherAuthConfigManager::loadConfig() {
-    LOG_CONFIG_DEBUG("Loading QWeather auth config from file: %s", configFilePath.c_str());
-    String configContent;
-    if (!readFile(configContent)) {
+    LOG_CONFIG_DEBUG("Loading QWeather auth config from file: %s", configFilePath);
+    char configContent[512];
+    if (!readFile(configContent, sizeof(configContent))) {
         LOG_CONFIG_WARN("Failed to read QWeather auth config file");
         setLastQWeatherError(QWeatherError::ConfigFileError);
         return false;
     }
-    
+
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, configContent);
     if (error) {
@@ -55,18 +60,18 @@ bool QWeatherAuthConfigManager::loadConfig() {
         return false;
     }
 
-    apiHost = doc["apiHost"].as<String>();
-    kId = doc["kId"].as<String>();
-    projectID = doc["projectID"].as<String>();
-    base64Key = doc["base64Key"].as<String>();
-    location = doc["location"].as<String>();
-    cityName = doc["cityName"].as<String>();
+    strlcpy(apiHost, doc["apiHost"] | "", sizeof(apiHost));
+    strlcpy(kId, doc["kId"] | "", sizeof(kId));
+    strlcpy(projectID, doc["projectID"] | "", sizeof(projectID));
+    strlcpy(base64Key, doc["base64Key"] | "", sizeof(base64Key));
+    strlcpy(location, doc["location"] | "", sizeof(location));
+    strlcpy(cityName, doc["cityName"] | "", sizeof(cityName));
 
     return true;
 }
 
 bool QWeatherAuthConfigManager::saveConfig() {
-    LOG_CONFIG_INFO("Saving QWeather auth config to file: %s", configFilePath.c_str());
+    LOG_CONFIG_INFO("Saving QWeather auth config to file: %s", configFilePath);
     JsonDocument doc;
     doc["apiHost"] = apiHost;
     doc["kId"] = kId;
@@ -75,54 +80,67 @@ bool QWeatherAuthConfigManager::saveConfig() {
     doc["location"] = location;
     doc["cityName"] = cityName;
 
-    String jsonString;
-    serializeJson(doc, jsonString);
+    char jsonString[512];
+    serializeJson(doc, jsonString, sizeof(jsonString));
 
     if(writeFile(jsonString)){
-        LOG_CONFIG_INFO("QWeather auth config saved successfully: %s", jsonString.c_str());
+        LOG_CONFIG_INFO("QWeather auth config saved successfully: %s", jsonString);
         return true;
     }
     else{
         LOG_CONFIG_ERROR("Failed to write QWeather auth config to file");
         setLastQWeatherError(QWeatherError::ConfigFileError);
         return false;
-    }   
+    }
 }
 
 bool QWeatherAuthConfigManager::resetConfig() {
     LOG_CONFIG_INFO("Resetting QWeather auth config to defaults");
-    apiHost = "";
-    kId = "";
-    projectID = "";
-    base64Key = "";
-    location = "";
-    cityName = "";
+    apiHost[0] = '\0';
+    kId[0] = '\0';
+    projectID[0] = '\0';
+    base64Key[0] = '\0';
+    location[0] = '\0';
+    cityName[0] = '\0';
 
     if(saveConfig()) return true;
     return false;
 }
 
-bool QWeatherAuthConfigManager::setAuth(String apiHost, String kId, String projectID, String base64Key) {
-    this->apiHost = apiHost;
-    this->kId = kId;
-    this->projectID = projectID;
-    this->base64Key = base64Key;
+bool QWeatherAuthConfigManager::setAuth(const char* apiHost, const char* kId, const char* projectID, const char* base64Key) {
+    strlcpy(this->apiHost, apiHost, sizeof(this->apiHost));
+    strlcpy(this->kId, kId, sizeof(this->kId));
+    strlcpy(this->projectID, projectID, sizeof(this->projectID));
+    strlcpy(this->base64Key, base64Key, sizeof(this->base64Key));
 
-    if(this->apiHost.isEmpty() || this->kId.isEmpty() || this->projectID.isEmpty() || this->base64Key.isEmpty()){
+    if(strlen(this->apiHost) == 0 || strlen(this->kId) == 0 ||
+       strlen(this->projectID) == 0 || strlen(this->base64Key) == 0){
         LOG_CONFIG_WARN("One or more auth parameters are empty");
         setLastQWeatherError(QWeatherError::EmptyArguments);
         return false;
     }
 
-    this->apiHost.trim();
-    this->kId.trim();
-    this->projectID.trim();
-    this->base64Key.trim();
+    // 去除首尾空格
+    auto trimStr = [](char* str) {
+        // 去除前导空格
+        char* start = str;
+        while (*start == ' ') start++;
+        if (start != str) memmove(str, start, strlen(start) + 1);
+        // 去除尾部空格
+        size_t len = strlen(str);
+        while (len > 0 && str[len - 1] == ' ') {
+            str[--len] = '\0';
+        }
+    };
+    trimStr(this->apiHost);
+    trimStr(this->kId);
+    trimStr(this->projectID);
+    trimStr(this->base64Key);
 
-    auto isValidApiHost = [](const String& host)->bool{
+    auto isValidApiHost = [](const char* host)->bool{
         // 简单检测：必须包含点且不含空格
-        if (host.indexOf(' ') >= 0) return false;
-        if (host.indexOf('.') <= 0) return false;
+        if (strchr(host, ' ') != NULL) return false;
+        if (strchr(host, '.') == NULL) return false;
         return true;
     };
 
@@ -132,10 +150,10 @@ bool QWeatherAuthConfigManager::setAuth(String apiHost, String kId, String proje
         return false;
     }
 
-    auto isValidID = [](const String& s)->bool{
-        if (s.length() != 10) return false;
-        for (size_t i = 0; i < s.length(); ++i) {
-            char c = s.charAt(i);
+    auto isValidID = [](const char* s)->bool{
+        if (strlen(s) != 10) return false;
+        for (size_t i = 0; i < strlen(s); ++i) {
+            char c = s[i];
             if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))) return false;
         }
         return true;
@@ -156,10 +174,10 @@ bool QWeatherAuthConfigManager::setAuth(String apiHost, String kId, String proje
     return saveConfig();
 }
 
-bool QWeatherAuthConfigManager::setLocation(String location, String cityName) {
-    auto isValidLocation = [](const String& loc)->bool{
-        for(size_t i = 0; i < loc.length(); ++i){
-            char c = loc.charAt(i);
+bool QWeatherAuthConfigManager::setLocation(const char* location, const char* cityName) {
+    auto isValidLocation = [](const char* loc)->bool{
+        for(size_t i = 0; i < strlen(loc); ++i){
+            char c = loc[i];
             if(!(c >= '0' && c <= '9')){
                 return false;
             }
@@ -172,9 +190,9 @@ bool QWeatherAuthConfigManager::setLocation(String location, String cityName) {
         return false;
     }
 
-    auto isValidCityName = [](const String& name)->bool{
-        for(size_t i = 0; i < name.length(); ++i){
-            char c = name.charAt(i);
+    auto isValidCityName = [](const char* name)->bool{
+        for(size_t i = 0; i < strlen(name); ++i){
+            char c = name[i];
             if(!( (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c == ' ') )){
                 return false;
             }
@@ -187,13 +205,14 @@ bool QWeatherAuthConfigManager::setLocation(String location, String cityName) {
         return false;
     }
 
-    this->location = location;
-    this->cityName = cityName;
+    strlcpy(this->location, location, sizeof(this->location));
+    strlcpy(this->cityName, cityName, sizeof(this->cityName));
     return saveConfig();
 }
 
 bool QWeatherAuthConfigManager::checkApiConfigValid() {
-    if (apiHost.isEmpty() || kId.isEmpty() || projectID.isEmpty() || base64Key.isEmpty()) {
+    if (strlen(apiHost) == 0 || strlen(kId) == 0 ||
+        strlen(projectID) == 0 || strlen(base64Key) == 0) {
         setLastQWeatherError(QWeatherError::EmptyArguments);
         return false;
     }
@@ -202,7 +221,7 @@ bool QWeatherAuthConfigManager::checkApiConfigValid() {
 }
 
 bool QWeatherAuthConfigManager::checkLocationConfigValid() {
-    if (location.isEmpty()) {
+    if (strlen(location) == 0) {
         setLastQWeatherError(QWeatherError::EmptyArguments);
         return false;
     }
@@ -218,7 +237,7 @@ void QWeatherAuthConfigManager::setLastQWeatherError(QWeatherError error) {
     lastQWeatherError = error;
 }
 
-String QWeatherAuthConfigManager::getLastQWeatherErrorString() {
+const char* QWeatherAuthConfigManager::getLastQWeatherErrorString() {
     switch (lastQWeatherError) {
         case QWeatherError::None:
             return "No Error";
