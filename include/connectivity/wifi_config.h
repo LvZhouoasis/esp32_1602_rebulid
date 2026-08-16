@@ -10,19 +10,18 @@
 #ifndef WIFI_CONFIG_H
 #define WIFI_CONFIG_H
 
-#include <WebServer.h>
-#include <DNSServer.h>
-
 #include "mydefine.h"
 #include "./hardware/lcd_driver.h"
 #include "./hardware/rgb_led.h"
 #include "./connectivity/network.h"
+#include "./connectivity/wifi_esp32.h"
 #include "./services/web_pages.h"
 #include "./services/wifi_config_manager.h"
 #include "./services/time_manager.h"
 
-extern WebServer apServer;                      /**< 配网模式使用的 Web 服务器 */
-extern DNSServer dnsServer;                     /**< DNS 服务器用于强制门户 */
+// 前向声明HTTP服务器类（将在阶段7.2实现）
+class HttpServer;
+extern HttpServer apServer;                      /**< 配网模式使用的 Web 服务器 */
 
 enum WifiScanState {
     WIFI_SCAN_IDLE,

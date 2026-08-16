@@ -4,11 +4,13 @@
 extern WifiConfigManager wifiConfigManager;
 
 // 配网模式使用的 Web 服务器（监听端口 80）
-WebServer apServer(80);
+// TODO: 阶段7.2将实现HttpServer类
+// HttpServer apServer(80);
 
 // DNS 服务器用于强制门户
-DNSServer dnsServer;
-const byte DNS_PORT = 53;
+// TODO: 阶段7.3将实现DNS服务器
+// DNSServer dnsServer;
+// const byte DNS_PORT = 53;
 
 // 当前是否处于配网模式的标志位
 bool inConfigMode = false;

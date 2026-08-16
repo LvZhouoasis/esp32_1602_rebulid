@@ -26,6 +26,7 @@ idf_component_register(
         "connectivity/wifi_config.cpp"
         "connectivity/network.cpp"
         "connectivity/jwt_auth.cpp"
+        "connectivity/wifi_esp32.cpp"
 
         # 服务层
         "services/protocol.cpp"
@@ -84,9 +85,11 @@ idf_component_register(
         esp_wifi
         esp_http_client
         esp_https_ota
+        esp_http_server
         esp_timer
         esp_event
         esp_netif
+        esp_ota
         nvs_flash
         spiffs
         json
