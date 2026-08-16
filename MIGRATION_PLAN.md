@@ -1210,28 +1210,45 @@ esp_pm_configure(&pm_config);
 ```
 **状态**：✅ 已在阶段7代码审查中完成
 
-#### 8.9 HTTP 文件上传支持（待实现）
+#### ✅ 8.9 HTTP 文件上传支持（已完成）
 
-**目标**：为 web_setting.cpp 的 OTA 上传功能添加 ESP-IDF 原生支持
+**完成日期**：2026-08-16
 
-**当前状态**：
-- web_setting.cpp 仍使用 Arduino 的 `HTTPUpload` 结构
-- 需要在 HttpServer 类中添加文件上传处理接口
+**新建/修改文件**：
+- `include/connectivity/http_server_wrapper.h` - 添加 HTTPUpload 结构体和上传相关 API
+- `main/connectivity/http_server_wrapper.cpp` - 实现 multipart/form-data 解析
+- `main/services/web_setting.cpp` - 修改 OTA 上传使用新 API
 
-**实现方案**：
+**封装的 API**：
 ```cpp
-// 在 http_server_wrapper.h 中添加
-struct HttpUpload {
-    const char* filename;
-    const uint8_t* buf;
-    size_t currentSize;
-    size_t totalSize;
-    int status;  // UPLOAD_FILE_START, UPLOAD_FILE_WRITE, UPLOAD_FILE_END
+// 上传状态常量
+#define UPLOAD_FILE_START  0
+#define UPLOAD_FILE_WRITE  1
+#define UPLOAD_FILE_END    2
+
+// 上传状态结构
+struct HTTPUpload {
+    const char* filename;      // 文件名
+    const char* contentType;   // 内容类型
+    const uint8_t* buf;        // 数据缓冲区
+    size_t currentSize;        // 当前块大小
+    size_t totalSize;          // 总已上传大小
+    int status;                // UPLOAD_FILE_START/WRITE/END
 };
 
-// 添加上传处理回调注册
-void onUpload(const char* uri, std::function<void(HttpUpload&)> handler);
+// 注册上传处理函数
+void onUpload(const char* uri, std::function<void()> handler);
+
+// 获取上传状态（在handler中调用）
+HTTPUpload& upload();
 ```
+
+**实现要点**：
+- 解析 multipart/form-data 格式的 POST 请求
+- 自动提取 boundary、filename、Content-Type
+- 分块接收数据并触发回调（START → WRITE → ... → WRITE → END）
+- 支持大文件上传（如固件升级）
+- 兼容 Arduino WebServer 的 upload() API 调用方式
 
 **预计工时**：1 天
 
@@ -1264,8 +1281,8 @@ void onUpload(const char* uri, std::function<void(HttpUpload&)> handler);
 | 6 | SPIFFS 文件系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
 | 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | ✅ 已完成 |
 | 7+ | 阶段7代码审查 | 0.5 天 | ★★☆ | ✅ 已完成 |
-| 8 | 第三方库适配和清理 | 1-2 天 | ★★☆ | ⏳ 待执行 |
-| **总计** | - | **24-37 天** | - | 7.5/8 完成 |
+| 8 | 第三方库适配和清理 | 1-2 天 | ★★☆ | ✅ 已完成 |
+| **总计** | - | **24-37 天** | - | **8/8 完成** |
 
 ### 4.3 风险和注意事项
 
