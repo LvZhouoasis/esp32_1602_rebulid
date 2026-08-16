@@ -1,4 +1,5 @@
 #include "./connectivity/wifi_config.h"
+#include "./connectivity/dns_server.h"
 #include <cstring>
 
 extern WifiConfigManager wifiConfigManager;
@@ -7,9 +8,8 @@ extern WifiConfigManager wifiConfigManager;
 HttpServer apServer(80);
 
 // DNS 服务器用于强制门户
-// TODO: 阶段7.3将实现DNS服务器
-// DNSServer dnsServer;
-// const byte DNS_PORT = 53;
+DNSServer dnsServer;
+const uint16_t DNS_PORT = 53;
 
 // 当前是否处于配网模式的标志位
 bool inConfigMode = false;
@@ -144,7 +144,10 @@ void enterConfigMode() {
 	LOG_WIFI_INFO("Config webpage started at IP: %s", WiFi.softAPIP().toString().c_str());
 
 	// 启动DNS服务器，将所有域名请求劫持到ESP32的IP
-	dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+	IPAddress softIP = WiFi.softAPIP();
+	esp_ip4_addr_t ipAddr;
+	ipAddr.addr = softIP;  // IPAddress 可以隐式转换为 uint32_t
+	dnsServer.start(DNS_PORT, "*", ipAddr);
 
 	// 捕获所有DNS请求并重定向到配网页面
 	apServer.onNotFound([](){

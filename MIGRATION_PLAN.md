@@ -821,42 +821,52 @@ WiFi.setMode(mode)       // 设置 WiFi 模式
 
 ---
 
-#### 阶段 7.2：HTTP 服务器封装（待执行）
+#### ✅ 阶段 7.2：HTTP 服务器封装（已完成）
 
-**目标**：替换 WebServer.h 的所有调用
+**完成日期**：2026-08-15
 
-**封装类设计**：
+**新建文件**：
+- `include/connectivity/http_server_wrapper.h` - HttpServer 类声明
+- `main/connectivity/http_server_wrapper.cpp` - ESP-IDF httpd 实现
+
+**封装的 API（兼容 Arduino WebServer）**：
 ```cpp
-// include/connectivity/http_server_wrapper.h
-class HttpServer {
-public:
-    HttpServer(int port);
-    void on(const char* uri, std::function<void()> handler);
-    void on(const char* uri, int method, std::function<void()> handler);
-    void onNotFound(std::function<void()> handler);
-    void begin();
-    void handleClient();
-    void send(int code, const char* contentType, const char* content);
-    void sendHeader(const char* name, const char* value);
-    void setContentLength(int length);
-    void sendContent_P(const char* content, int length);
-    String arg(const char* name);
-    bool hasArg(const char* name);
-    int method();
-};
+HttpServer(port)                    // 构造函数
+on(uri, handler)                    // 注册路由
+on(uri, method, handler)            // 注册指定方法路由
+onNotFound(handler)                 // 注册 404 处理
+begin()                             // 启动服务器
+handleClient()                      // 处理请求（兼容 Arduino）
+send(code, type, content)           // 发送响应
+sendHeader(name, value)             // 发送响应头
+setContentLength(len)               // 设置内容长度
+sendContent_P(content, len)         // 发送内容块
+sendContent(content)                // 发送响应内容
+arg(name)                           // 获取查询参数
+argPlain()                          // 获取 POST 请求体
+hasArg(name)                        // 检查参数是否存在
+method()                            // 获取请求方法
+uri()                               // 获取请求 URI
+header(name)                        // 获取请求头
+hasHeader(name)                     // 检查请求头是否存在
 ```
 
 **ESP-IDF 实现要点**：
 - 使用 `httpd_start()` 启动服务器
 - 使用 `httpd_register_uri_handler()` 注册 URI 处理
 - 使用 `httpd_resp_send()` 发送响应
+- 使用 `httpd_resp_send_chunk()` 发送分块响应
 - 使用 `httpd_req_get_url_query_str()` 获取查询参数
+- 使用 `httpd_req_recv()` 读取请求体
 
-**需要修改的文件**：
-- `main/connectivity/wifi_config.cpp` - 替换 apServer 的所有调用
-- `main/services/web_setting.cpp` - 替换 settingServer 的所有调用
+**更新文件**：
+- `include/connectivity/wifi_config.h` - 使用 HttpServer 替代 WebServer
+- `main/connectivity/wifi_config.cpp` - 使用 HttpServer apServer(80)
+- `main/services/web_setting.cpp` - 使用 HttpServer settingServer(80)
+- `include/connectivity/wifi_esp32.h` - 添加 WIFI_STA/WIFI_AP/WIFI_OFF 兼容常量
+- `main/CMakeLists.txt` - 添加 http_server_wrapper.cpp
 
-**预计工时**：2-3 天
+**验证**：编译通过，0 个错误
 
 ---
 
@@ -1124,7 +1134,7 @@ esp_pm_configure(&pm_config);
 | 4 | GPIO 和硬件抽象层 | 1-2 天 | ★★☆ | ✅ 已完成 |
 | 5 | I2C 通信迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
 | 6 | SPIFFS 文件系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
-| 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | 🔄 进行中（7.1已完成） |
+| 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | 🔄 进行中（7.1-7.2已完成） |
 | 8 | 第三方库适配和清理 | 2-3 天 | ★★☆ | ⏳ 待执行 |
 | **总计** | - | **25-37 天** | - | 6.1/8 完成 |
 

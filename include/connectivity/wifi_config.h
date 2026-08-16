@@ -16,11 +16,14 @@
 #include "./connectivity/network.h"
 #include "./connectivity/wifi_esp32.h"
 #include "./connectivity/http_server_wrapper.h"
+#include "./connectivity/dns_server.h"
 #include "./services/web_pages.h"
 #include "./services/wifi_config_manager.h"
 #include "./services/time_manager.h"
 
 extern HttpServer apServer;                      /**< 配网模式使用的 Web 服务器 */
+extern DNSServer dnsServer;                      /**< DNS 服务器用于强制门户 */
+extern const uint16_t DNS_PORT;                  /**< DNS 服务器端口 */
 
 enum WifiScanState {
     WIFI_SCAN_IDLE,
