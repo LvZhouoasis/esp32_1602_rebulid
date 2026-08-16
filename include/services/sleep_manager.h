@@ -11,8 +11,6 @@
 #ifndef SLEEP_MANAGER_H
 #define SLEEP_MANAGER_H
 
-#include <Arduino.h>
-
 #include "mydefine.h"
 #include "./hardware/lcd_driver.h"
 #include "./hardware/rgb_led.h"

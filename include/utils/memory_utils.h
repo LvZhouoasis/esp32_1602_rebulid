@@ -1,7 +1,10 @@
 #ifndef MEMORY_UTILS_H
 #define MEMORY_UTILS_H
 
-#include <Arduino.h>
+#include <cstddef>
+#include <cstdint>
+#include "esp_system.h"
+#include "heap/include/heap_api.h"
 
 #include "./utils/logger.h"
 

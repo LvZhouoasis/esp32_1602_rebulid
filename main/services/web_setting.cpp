@@ -320,8 +320,8 @@ void webSettingHandleOTAUpload() {
             
             // 创建后台重启任务，等待结束响应发送完成
             xTaskCreate([](void*){
-                WAIT_MS(2000); 
-                ESP.restart();
+                WAIT_MS(2000);
+                esp_restart();
             }, "Restart_Task", 2048, NULL, 1, NULL);
         } 
         else {  // 如果结束时出错

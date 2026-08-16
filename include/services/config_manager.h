@@ -1,7 +1,7 @@
 /**
  * @file config_manager.h
  * @brief 配置管理器基类
- * 
+ *
  * 提供配置文件的读写、错误处理和SPIFFS文件系统初始化等基础功能
  */
 
@@ -9,7 +9,6 @@
 #define CONFIG_MANAGER_H
 
 #include <ArduinoJson.h>
-#include <SPIFFS.h>
 
 #include "./utils/logger.h"
 

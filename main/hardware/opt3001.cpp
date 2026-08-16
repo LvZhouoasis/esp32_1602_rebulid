@@ -2,35 +2,22 @@
 
 bool isOPT3001Connected = false;  /**< 光传感器连接状态 */
 
+// I2C 设备实例
+static I2CDevice opt3001Device(I2C_NUM_0, OPT3001_I2C_ADDR);
+
 // 检测I2C设备是否存在
 bool _isOPT3001Present() {
-    Wire.beginTransmission(OPT3001_I2C_ADDR);
-    uint8_t error = Wire.endTransmission();
-    return (error == 0);  // 0 = 成功
+    return opt3001Device.isPresent();
 }
 
 // 读取16位寄存器 (大端序)
 uint16_t _readOPT3001Register(uint8_t reg) {
-    Wire.beginTransmission(OPT3001_I2C_ADDR);
-    Wire.write(reg);
-    Wire.endTransmission(false);
-    Wire.requestFrom(OPT3001_I2C_ADDR, (uint8_t)2);
-
-    if (Wire.available() == 2) {
-        uint8_t msb = Wire.read();
-        uint8_t lsb = Wire.read();
-        return (msb << 8) | lsb;
-    }
-    return 0;
+    return opt3001Device.readRegister16BE(reg);
 }
 
 // 写入16位寄存器 (大端序)
 void _writeOPT3001Register(uint8_t reg, uint16_t value) {
-    Wire.beginTransmission(OPT3001_I2C_ADDR);
-    Wire.write(reg);
-    Wire.write(value >> 8);      // MSB first
-    Wire.write(value & 0xFF);    // LSB second
-    Wire.endTransmission();
+    opt3001Device.writeRegister16BE(reg, value);
 }
 
 // 将原始结果转换为 lux 值

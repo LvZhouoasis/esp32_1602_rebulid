@@ -1,7 +1,7 @@
 #ifndef ICONS_H
 #define ICONS_H
 
-#include <Arduino.h>
+#include <cstdint>
 
 //  系统图标
 namespace SystemIcons {

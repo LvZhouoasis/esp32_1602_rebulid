@@ -175,7 +175,7 @@ OTAResult otaUpdateFromURL(const char* url, bool useHTTPS) {
         g_otaCurrentStatus = OTA_COMPLETED_SUCCESS;
         g_otaCurrentResult = OTA_SUCCESS;
         WAIT_MS(2000);
-        ESP.restart();
+        esp_restart();
         return OTA_SUCCESS;
     } else {
         snprintf(g_otaLastError, sizeof(g_otaLastError), "%d: %s", Update.getError(), Update.errorString());

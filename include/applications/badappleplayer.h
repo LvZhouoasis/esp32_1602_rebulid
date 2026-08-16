@@ -13,7 +13,7 @@
 #ifndef BADAPPLEPLAYER_H
 #define BADAPPLEPLAYER_H
 
-#include <SPIFFS.h>
+#include <cstdio>
 #include "./applications/bad_apple_melody.h"
 
 #include "./menu/menu.h"

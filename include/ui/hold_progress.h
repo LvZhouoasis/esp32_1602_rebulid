@@ -1,7 +1,7 @@
 #ifndef HOLD_PROGRESS_H
 #define HOLD_PROGRESS_H
 
-#include <Arduino.h>
+#include <cstdint>
 
 /**
  * @brief 渲染长按进度条（2行LCD）

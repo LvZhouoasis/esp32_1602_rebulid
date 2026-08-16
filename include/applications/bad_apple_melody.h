@@ -3,9 +3,9 @@
 // 自动生成 - 请勿手动编辑
 // ==============================
 
-#include <Arduino.h>
+#include <cstdint>
 
-const uint16_t badAppleMelodyFrequencies[] PROGMEM = {
+const uint16_t badAppleMelodyFrequencies[] = {
     0, 0, 39, 0, 39, 0, 39, 0, 39, 0,
     39, 0, 39, 0, 39, 0, 39, 0, 39, 0,
     39, 0, 39, 0, 39, 0, 39, 0, 39, 0,
@@ -122,7 +122,7 @@ const uint16_t badAppleMelodyFrequencies[] PROGMEM = {
     165, 0, 165, 0, 165, 0, 165, 0, 0
 };
 
-const uint16_t badAppleMelodyDurations[] PROGMEM = {
+const uint16_t badAppleMelodyDurations[] = {
     3200, 55, 54, 54, 55, 54, 54, 55, 54, 380,
     55, 380, 55, 380, 54, 163, 55, 163, 54, 381,
     54, 380, 55, 380, 54, 55, 54, 54, 55, 54,

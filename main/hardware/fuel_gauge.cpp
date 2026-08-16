@@ -2,12 +2,13 @@
 
 bool isfuelICConnected = false;  /**< 燃料计芯片连接状态 */
 
+// I2C 设备实例
+static I2CDevice bq27421Device(I2C_NUM_0, BQ27421_I2C_ADDR);
+
 // 检测I2C设备是否存在（带重试，防止上电/唤醒时I2C总线未稳定导致伪ACK）
 bool _isBQ27421Present() {
     for (int attempt = 0; attempt < 3; attempt++) {
-        Wire.beginTransmission(BQ27421_I2C_ADDR);
-        uint8_t error = Wire.endTransmission();
-        if (error == 0) return true;  // 0 = 成功
+        if (bq27421Device.isPresent()) return true;
         WAIT_MS(5);
     }
     return false;
@@ -15,54 +16,26 @@ bool _isBQ27421Present() {
 
 // 读取16位寄存器 (小端序)
 uint16_t _readBQ27421Register(uint8_t reg) {
-    Wire.beginTransmission(BQ27421_I2C_ADDR);
-    Wire.write(reg);
-    uint8_t error = Wire.endTransmission(false);
-    if (error != 0) {
-        LOG_BATTERY_WARN("I2C transmission error: %d", error);
-        return 0;
+    uint16_t value = bq27421Device.readRegister16LE(reg);
+    if (value == 0) {
+        LOG_BATTERY_WARN("I2C read error for reg 0x%02X", reg);
     }
-    
-    Wire.requestFrom(BQ27421_I2C_ADDR, (uint8_t)2);
-    if (Wire.available() == 2) {
-        uint8_t lsb = Wire.read();
-        uint8_t msb = Wire.read();
-        return (msb << 8) | lsb;
-    }
-    return 0;
+    return value;
 }
 
 // 单字节读取函数(用于BlockData区域)
 uint8_t _readBQ27421Byte(uint8_t reg) {
-    Wire.beginTransmission(BQ27421_I2C_ADDR);
-    Wire.write(reg);
-    uint8_t error = Wire.endTransmission(false);
-    if (error != 0) {
-        return 0;
-    }
-    
-    Wire.requestFrom(BQ27421_I2C_ADDR, (uint8_t)1);
-    if (Wire.available() == 1) {
-        return Wire.read();
-    }
-    return 0;
+    return bq27421Device.readByte(reg);
 }
 
 // 写入16位寄存器 (小端序)
 void _writeBQ27421Register(uint8_t reg, uint16_t value) {
-    Wire.beginTransmission(BQ27421_I2C_ADDR);
-    Wire.write(reg);
-    Wire.write(value & 0xFF);        // LSB first
-    Wire.write(value >> 8);          // MSB second
-    Wire.endTransmission();
+    bq27421Device.writeRegister16LE(reg, value);
 }
 
 // 单字节写入函数(用于BlockData区域)
 void _writeBQ27421Byte(uint8_t reg, uint8_t value) {
-    Wire.beginTransmission(BQ27421_I2C_ADDR);
-    Wire.write(reg);
-    Wire.write(value);
-    Wire.endTransmission();
+    bq27421Device.writeByte(reg, value);
 }
 
 void readFuelGaugeStatus() {
@@ -108,7 +81,12 @@ void initBQ27421(uint16_t designCapacity_mAh) {
     
     // 尝试初始化I2C（如果已初始化则不会重复）
     // 注意：如果OPT3001已经初始化了I2C，这里会返回false但I2C仍然可用
-    Wire.begin(SDA_PIN, SCL_PIN);
+    static bool i2cInitialized = false;
+    if (!i2cInitialized) {
+        if (i2cInit(I2C_NUM_0, SDA_PIN, SCL_PIN)) {
+            i2cInitialized = true;
+        }
+    }
     WAIT_MS(10);  // 等待I2C稳定
     LOG_BATTERY_DEBUG("I2C bus ready for BQ27421");
 

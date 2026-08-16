@@ -523,59 +523,36 @@ s.toUpperCase();
 
 ---
 
-### 阶段 4：GPIO 和硬件抽象层
+### ✅ 阶段 4：GPIO 和硬件抽象层
 
-**目标**：替换 Arduino GPIO API
+**完成日期**：2026-08-15
 
-**预计工时**：1-2 天
+**实现方式**：在 `include/mydefine.h` 中添加内联辅助函数，封装 ESP-IDF GPIO/LEDC API，保持 Arduino 兼容接口
+
+**新增辅助函数**：
+1. `digitalRead(int pin)` → 封装 `gpio_get_level()`
+2. `digitalWrite(int pin, int level)` → 封装 `gpio_set_level()`
+3. `ledcSetup(channel, freq, resolution)` → 封装 `ledc_timer_config()`
+4. `ledcAttachPin(pin, channel)` → 封装 `ledc_channel_config()`
+5. `ledcWrite(channel, duty)` → 封装 `ledc_set_duty()` + `ledc_update_duty()`
+6. `ledcWriteTone(channel, freq)` → 封装 `ledc_timer_config()` + `ledcWrite()`
+7. `ledcDetachPin(pin)` → 封装 `gpio_set_direction(DISABLE)`
+8. `map(x, in_min, in_max, out_min, out_max)` → 数值范围映射
+9. `constrain(x, a, b)` → 数值范围限制
 
 **涉及文件**：
-- `src/hardware/button.cpp`（digitalRead）
-- `src/hardware/buzzer.cpp`（ledcAttachPin, ledcWrite, ledcWriteTone）
-- `src/hardware/lcd_driver.cpp`（已部分使用 ESP-IDF）
-- `src/connectivity/wifi_config.cpp`（digitalRead）
+- `include/mydefine.h` - 新增9个辅助函数
+- `main/hardware/button.cpp` - 使用 `digitalRead`
+- `main/hardware/buzzer.cpp` - 使用 LEDC 函数
+- `main/hardware/lcd_driver.cpp` - 使用 LEDC 函数
+- `main/connectivity/wifi_config.cpp` - 使用 `digitalRead`
+- `main/applications/setting.cpp` - 使用 `digitalRead`
+- `main/applications/pomodoro.cpp` - 使用 `digitalRead`
 
-**替换**：
-
-```cpp
-// Arduino
-pinMode(17, OUTPUT);
-digitalWrite(17, HIGH);
-int val = digitalRead(9);
-
-// ESP-IDF
-gpio_set_direction(GPIO_NUM_17, GPIO_MODE_OUTPUT);
-gpio_set_level(GPIO_NUM_17, 1);
-int val = gpio_get_level(GPIO_NUM_9);
-```
-
-**buzzer.cpp 特殊处理**：
-```cpp
-// Arduino LEDC
-ledcAttachPin(BUZZER_PIN, channel);
-ledcWriteTone(channel, frequency);
-ledcWrite(channel, duty);
-
-// ESP-IDF LEDC (v5.x API)
-ledc_timer_config_t timer_conf = {
-    .speed_mode = LEDC_LOW_SPEED_MODE,
-    .duty_resolution = LEDC_TIMER_8_BIT,
-    .timer_num = LEDC_TIMER_0,
-    .freq_hz = frequency,
-    .clk_cfg = LEDC_AUTO_CLK
-};
-ledc_timer_config(&timer_conf);
-
-ledc_channel_config_t channel_conf = {
-    .gpio_num = BUZZER_PIN,
-    .speed_mode = LEDC_LOW_SPEED_MODE,
-    .channel = LEDC_CHANNEL_0,
-    .timer_sel = LEDC_TIMER_0,
-    .duty = duty,
-    .hpoint = 0
-};
-ledc_channel_config(&channel_conf);
-```
+**说明**：
+- 通过内联辅助函数封装，保持 Arduino API 兼容性
+- 底层实现使用 ESP-IDF 原生 API
+- 无需修改各硬件驱动文件的调用代码
 
 ---
 
@@ -618,55 +595,136 @@ i2c_cmd_link_delete(cmd);
 
 ---
 
-### 阶段 6：SPIFFS 文件系统迁移
+### ✅ 阶段 5：I2C 通信迁移
+
+**完成日期**：2026-08-15
+
+**实现方式**：在 `include/mydefine.h` 中添加 `I2CDevice` 辅助类，封装 ESP-IDF I2C 驱动
+
+**新增辅助函数/类**：
+1. `i2cInit(port, sda_pin, scl_pin, freq)` - 初始化 I2C 总线
+2. `I2CDevice` 类 - 封装 I2C 设备操作
+   - `isPresent()` - 检测设备是否存在
+   - `readRegister(reg, data, len)` - 读取寄存器
+   - `writeRegister(reg, data, len)` - 写入寄存器
+   - `readRegister16BE(reg)` - 读取16位寄存器（大端序）
+   - `readRegister16LE(reg)` - 读取16位寄存器（小端序）
+   - `writeRegister16BE(reg, value)` - 写入16位寄存器（大端序）
+   - `writeRegister16LE(reg, value)` - 写入16位寄存器（小端序）
+   - `readByte(reg)` - 读取单字节
+   - `writeByte(reg, value)` - 写入单字节
+
+**涉及文件**：
+- `include/mydefine.h` - 新增 `i2cInit()` 函数和 `I2CDevice` 类
+- `main/hardware/opt3001.cpp` - 使用 `I2CDevice` 替换 Arduino Wire
+- `main/hardware/fuel_gauge.cpp` - 使用 `I2CDevice` 替换 Arduino Wire
+
+**说明**：
+- 通过 `I2CDevice` 类封装，保持代码简洁
+- 底层实现使用 ESP-IDF 原生 I2C 驱动
+- 支持大小端序读写，适配不同设备
+
+---
+
+### ✅ 阶段 6：SPIFFS 文件系统迁移
+
+**完成日期**：2026-08-15
 
 **目标**：替换 Arduino SPIFFS 库为 ESP-IDF VFS
 
-**预计工时**：2-3 天
-
 **涉及文件**：
-- `src/services/config_manager.cpp`（~42 处 SPIFFS 调用）
-- `src/applications/badappleplayer.cpp`（File 操作）
+- `include/mydefine.h` - 新增 `spiffsInit()` 和 `spiffsInfo()` 辅助函数
+- `main/services/config_manager.cpp` - 使用 ESP-IDF VFS POSIX API
+- `include/services/config_manager.h` - 移除 `#include <SPIFFS.h>`
+- `main/applications/badappleplayer.cpp` - 使用 ESP-IDF VFS POSIX API
+- `include/applications/badappleplayer.h` - 移除 `#include <SPIFFS.h>`，改用 `<cstdio>`
+- `main/applications/setting.cpp` - 使用 `unlink()` 替换 `SPIFFS.remove()`
+- `include/services/web_pages.h` - 移除 `PROGMEM` 属性（ESP32-S3 统一地址空间不需要）
+- `include/applications/bad_apple_melody.h` - 移除 `PROGMEM` 属性
 
-**替换**：
+**主要修改**：
 
-```cpp
-// Arduino SPIFFS
-SPIFFS.begin(false);
-File file = SPIFFS.open("/config.json", "r");
-String content = file.readString();
-file.close();
-SPIFFS.exists("/config.json");
-SPIFFS.remove("/config.json");
-SPIFFS.totalBytes();
-SPIFFS.usedBytes();
+1. **mydefine.h** - 新增辅助函数：
+   - `spiffsInit(basePath, max_files)` - 封装 `esp_vfs_spiffs_register()`
+   - `spiffsInfo(total, used)` - 封装 `esp_spiffs_info()`
 
-// ESP-IDF VFS
-esp_vfs_spiffs_conf_t spiffs_conf = {
-    .base_path = "/spiffs",
-    .partition_label = NULL,
-    .max_files = 10,
-    .format_if_mount_failed = true
-};
-esp_vfs_spiffs_register(&spiffs_conf);
+2. **config_manager.cpp** - 重写文件操作：
+   - `initSPIFFS()` - 使用 `spiffsInit()` 初始化
+   - `readFile()` - 使用 `stat()` + `fopen()` + `fread()` + `fclose()`
+   - `writeFile()` - 使用 `stat()` + `unlink()` + `fopen()` + `fwrite()` + `fclose()`
+   - `listDir()` - 使用 `opendir()` + `readdir()` + `closedir()`
+   - `saveAutoBrightnessEnabled()` / `loadAutoBrightnessEnabled()` - 更新路径格式
+   - `saveSoundEffectsEnabled()` / `loadSoundEffectsEnabled()` - 更新路径格式
 
-FILE* f = fopen("/spiffs/config.json", "r");
-char buf[512];
-size_t bytesRead = fread(buf, 1, sizeof(buf) - 1, f);
-buf[bytesRead] = '\0';
-fclose(f);
+3. **badappleplayer.cpp** - 重写文件操作：
+   - `File file` → `FILE* file`
+   - `SPIFFS.exists()` → `stat()`
+   - `SPIFFS.open()` → `fopen()`
+   - `file.size()` → `stat.st_size`
+   - `file.read()` → `fread()`
+   - `file.seek()` → `fseek()`
+   - `file.available()` → `ftell()` 计算剩余
+   - `file.close()` → `fclose()`
 
-// 检查文件存在
-struct stat st;
-bool exists = (stat("/spiffs/config.json", &st) == 0);
+4. **setting.cpp** - 更新文件操作：
+   - `SPIFFS.remove("/wifi.txt")` → `unlink("/spiffs/wifi.txt")`
+   - `ESP.restart()` → `esp_restart()`
 
-// 删除文件
-unlink("/spiffs/config.json");
+5. **PROGMEM 移除**：
+   - ESP32-S3 统一地址空间，PROGMEM 不需要
+   - 移除 `#include <pgmspace.h>`
+   - 移除所有 `PROGMEM` 属性
 
-// 获取存储信息
-size_t total = 0, used = 0;
-esp_spiffs_info(NULL, &total, &used);
-```
+6. **路径格式更新**：
+   - Arduino SPIFFS: `/config.json`
+   - ESP-IDF VFS: `/spiffs/config.json`
+   - 所有文件路径添加 `/spiffs` 前缀
+
+**替换模式总结**：
+- `SPIFFS.begin()` → `spiffsInit()` / `esp_vfs_spiffs_register()`
+- `SPIFFS.open(path, "r")` → `fopen("/spiffs" + path, "r")`
+- `File file` → `FILE* file`
+- `file.read()` → `fread()`
+- `file.write()` → `fwrite()`
+- `file.close()` → `fclose()`
+- `file.size()` → `stat.st_size`
+- `file.seek()` → `fseek()`
+- `SPIFFS.exists()` → `stat() == 0`
+- `SPIFFS.remove()` → `unlink()`
+- `SPIFFS.totalBytes()` / `SPIFFS.usedBytes()` → `spiffsInfo()` / `esp_spiffs_info()`
+- `PROGMEM` → 直接使用 const 数组（ESP32-S3 不需要）
+- `ESP.restart()` → `esp_restart()`
+
+**额外清理工作（阶段6附加）**：
+
+在完成SPIFFS迁移的同时，还清理了以下Arduino依赖：
+
+1. **移除 `#include <Arduino.h>`**：
+   - `include/hardware/lcd_driver.h` - 已有 `mydefine.h` 覆盖
+   - `include/ui/icons.h` - 改用 `<cstdint>`
+   - `include/services/kanamap.h` - 直接移除
+   - `include/services/sleep_manager.h` - 已有 `mydefine.h` 覆盖
+   - `include/ui/animations.h` - 改用 `<cstdint>`
+   - `include/ui/hold_progress.h` - 改用 `<cstdint>`
+   - `include/services/auto_brightness.h` - 改用 `<cstdint>`
+   - `include/hardware/buzzer.h` - 已有 `mydefine.h` 覆盖
+
+2. **移除 `#include <SPIFFS.h>`**：
+   - `include/services/config_manager.h`
+   - `include/applications/badappleplayer.h`
+
+3. **移除 `#include <pgmspace.h>`**：
+   - `include/services/web_pages.h`
+
+4. **替换 `ESP.restart()`**：
+   - `main/main.cpp` - `ESP.restart()` → `esp_restart()`
+   - `main/services/web_setting.cpp` - `ESP.restart()` → `esp_restart()`
+   - `main/services/ota_manager.cpp` - `ESP.restart()` → `esp_restart()`
+   - `main/applications/setting.cpp` - `ESP.restart()` → `esp_restart()`
+
+5. **替换 `ESP.getFreeHeap()` 等**：
+   - `main/utils/memory_utils.cpp` - 使用 `esp_get_free_heap_size()`, `heap_caps_get_largest_free_block()`, `esp_get_minimum_free_heap_size()`
+   - `include/utils/memory_utils.h` - 移除 `#include <Arduino.h>`，添加 ESP-IDF 头文件
 
 ---
 
@@ -857,12 +915,12 @@ esp_pm_configure(&pm_config);
 | 1 | 构建系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
 | 2 | 核心头文件重构 | 1 天 | ★☆☆ | ✅ 已完成 |
 | 3 | String 类替换 | 5-7 天 | ★★★ | ✅ 已完成 |
-| 4 | GPIO 和硬件抽象层 | 1-2 天 | ★★☆ | ⏳ 待执行 |
-| 5 | I2C 通信迁移 | 2-3 天 | ★★☆ | ⏳ 待执行 |
-| 6 | SPIFFS 文件系统迁移 | 2-3 天 | ★★☆ | ⏳ 待执行 |
-| 7 | WiFi 和网络迁移 | 5-7 天 | ★★★ | ⏳ 待执行 |
+| 4 | GPIO 和硬件抽象层 | 1-2 天 | ★★☆ | ✅ 已完成 |
+| 5 | I2C 通信迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
+| 6 | SPIFFS 文件系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
+| 7 | WiFi 和网络迁移 | 5-7 天 | ★★★ | ⏳ 待执行（最复杂阶段） |
 | 8 | 第三方库适配和清理 | 2-3 天 | ★★☆ | ⏳ 待执行 |
-| **总计** | - | **20-30 天** | - | - |
+| **总计** | - | **20-30 天** | - | 6/8 完成 |
 
 ### 4.3 风险和注意事项
 

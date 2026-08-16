@@ -358,7 +358,7 @@ void loop(){
         // 配网完成后延迟重启（不在回调中直接调用，避免 WiFi 事件卡死）
         if (pendingRestart) {
             WAIT_MS(500);
-            ESP.restart();
+            esp_restart();
         }
     }
 

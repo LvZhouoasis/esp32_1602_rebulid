@@ -102,3 +102,6 @@ idf_component_register(
         # 可选依赖
         esp_psram
 )
+
+# 抑制 ESP-IDF LEDC 宏的 implicit-fallthrough 警告（来自 esp-idf 内部宏）
+target_compile_options(${COMPONENT_LIB} PUBLIC -Wno-implicit-fallthrough)

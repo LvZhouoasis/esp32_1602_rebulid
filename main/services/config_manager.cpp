@@ -17,26 +17,32 @@ ConfigManager::~ConfigManager(){
 };
 
 bool ConfigManager::readFile(char* configContent, size_t bufferSize) {
-    if (!SPIFFS.exists(configFilePath)) {
-        LOG_CONFIG_WARN("Config file not found: %s", configFilePath);
+    // 构建完整路径（ESP-IDF VFS 需要 /spiffs 前缀）
+    char fullPath[128];
+    snprintf(fullPath, sizeof(fullPath), "/spiffs%s", configFilePath);
+
+    // 检查文件是否存在
+    struct stat st;
+    if (stat(fullPath, &st) != 0) {
+        LOG_CONFIG_WARN("Config file not found: %s", fullPath);
         lastError = Error::FileNotFound;
-        listDir("/", 0); // 列出根目录以帮助调试
+        listDir("/spiffs", 0); // 列出根目录以帮助调试
         return false;
     }
 
-    File file = SPIFFS.open(configFilePath, "r");
+    FILE* file = fopen(fullPath, "r");
     if (!file) {
         lastError = Error::ReadError;
-        LOG_CONFIG_ERROR("Failed to open config file: %s", configFilePath);
+        LOG_CONFIG_ERROR("Failed to open config file: %s", fullPath);
         return false;
     }
 
-    size_t fileSize = file.size();
-    LOG_CONFIG_DEBUG("Reading file: %s, size: %d bytes", configFilePath, fileSize);
+    size_t fileSize = st.st_size;
+    LOG_CONFIG_DEBUG("Reading file: %s, size: %d bytes", fullPath, fileSize);
 
     if (fileSize == 0) {
-        LOG_CONFIG_WARN("Config file is empty: %s", configFilePath);
-        file.close();
+        LOG_CONFIG_WARN("Config file is empty: %s", fullPath);
+        fclose(file);
         configContent[0] = '\0';
         lastError = Error::ReadError;
         return false;
@@ -45,20 +51,20 @@ bool ConfigManager::readFile(char* configContent, size_t bufferSize) {
     // 检查缓冲区大小
     if (fileSize >= bufferSize) {
         LOG_CONFIG_ERROR("Buffer too small: need %d, have %d", fileSize + 1, bufferSize);
-        file.close();
+        fclose(file);
         lastError = Error::ReadError;
         return false;
     }
 
     // 读取文件内容
-    size_t bytesRead = file.read((uint8_t*)configContent, fileSize);
+    size_t bytesRead = fread(configContent, 1, fileSize, file);
     configContent[bytesRead] = '\0';
-    file.close();
+    fclose(file);
 
     LOG_CONFIG_VERBOSE("Config read (%d bytes): %s", bytesRead, configContent);
 
     if (bytesRead == 0) {
-        LOG_CONFIG_ERROR("Failed to read content from file: %s", configFilePath);
+        LOG_CONFIG_ERROR("Failed to read content from file: %s", fullPath);
         lastError = Error::ReadError;
         return false;
     }
@@ -167,34 +173,25 @@ bool ConfigManager::initSPIFFS() {
     }
 
     LOG_CONFIG_INFO("Initializing SPIFFS...");
-    
-    // 先尝试正常挂载(不自动格式化)
-    bool mounted = SPIFFS.begin(false);
-    
-    if (!mounted) {
-        LOG_CONFIG_WARN("SPIFFS mount failed, formatting...");
-        // 如果挂载失败,进行格式化
-        if (!SPIFFS.format()) {
-            LOG_CONFIG_ERROR("SPIFFS format failed");
-            return false;
-        }
-        
-        WAIT_MS(100);  // 等待Flash完成格式化
-        
-        // 重新挂载
-        if (!SPIFFS.begin(false)) {
-            LOG_CONFIG_ERROR("SPIFFS mount failed after format");
-            return false;
-        }
+
+    // 使用 ESP-IDF VFS 初始化 SPIFFS
+    if (!spiffsInit()) {
+        LOG_CONFIG_ERROR("SPIFFS initialization failed");
+        return false;
     }
-    
+
     LOG_CONFIG_DEBUG("SPIFFS mounted successfully");
-    LOG_CONFIG_DEBUG("Total: %d bytes, Used: %d bytes", SPIFFS.totalBytes(), SPIFFS.usedBytes());
-    
+
+    // 获取存储信息
+    size_t total = 0, used = 0;
+    if (spiffsInfo(&total, &used)) {
+        LOG_CONFIG_DEBUG("Total: %d bytes, Used: %d bytes", total, used);
+    }
+
     // 打印文件列表
     LOG_CONFIG_DEBUG("Checking SPIFFS files...");
-    listDir("/", 0);
-    
+    listDir("/spiffs", 0);
+
     isSPIFFSInitialized = true;
     return true;
 }

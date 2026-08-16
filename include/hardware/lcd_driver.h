@@ -10,8 +10,6 @@
 #ifndef LCD_DRIVER_H
 #define LCD_DRIVER_H
 
-#include <Arduino.h>
-
 #include "mydefine.h"
 #include "./services/kanamap.h"
 #include "./utils/logger.h"

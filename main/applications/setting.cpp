@@ -196,12 +196,12 @@ void _toggleSoundEffects() {
 void _resetWifi(){
 	// 清除 WiFi 配置并重启，使设备重新进入配网流程。
 	inMenuMode = false;
-	SPIFFS.remove("/wifi.txt");
+	unlink("/spiffs/wifi.txt");
 	lcdText("WiFi cleared", 1);
 	lcdText("Rebooting...", 2);
 	LOG_SYSTEM_INFO("WiFi config cleared, restarting...");
 	WAIT_MS(800);
-	ESP.restart();
+	esp_restart();
 }
 
 void _resetFuelGauge(){
