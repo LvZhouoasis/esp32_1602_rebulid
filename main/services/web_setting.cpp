@@ -8,6 +8,7 @@
 #include "./applications/weather.h"
 #include "./connectivity/wifi_esp32.h"
 #include "./connectivity/http_server_wrapper.h"
+#include "./connectivity/http_client_wrapper.h"
 #include <cstring>
 #include "esp_system.h"
 #include "esp_clk_tree.h"
@@ -499,8 +500,8 @@ void fetchCitySearchResult(char* location) {
     snprintf(url, sizeof(url), "https://%s/geo/v2/city/lookup?location=%s&number=10", varApiHost, location);
     LOG_WEATHER_INFO("City search request URL: %s", url);
 
-    HTTPClient http;
-    http.begin(url);                            // 让HTTPClient自动处理HTTPS和DNS
+    HttpClientWrapper http;
+    http.begin(url);
     http.addHeader("Accept-Encoding", "gzip");
     char authHeader[560];
     snprintf(authHeader, sizeof(authHeader), "Bearer %s", jwtToken);
@@ -516,33 +517,20 @@ void fetchCitySearchResult(char* location) {
         settingServer.send(500, "text/html; charset=utf-8", errBuf);
         return;
     }
-    int payloadSize = http.getSize();
-    
-    // 使用RAII内存管理
-    MemoryManager::SafeBuffer compressedBuffer(payloadSize + 8, "CitySearch_Response");
-    if (!compressedBuffer.isValid()) {
-        http.end();
-        settingServer.send(500, "text/html; charset=utf-8", "{\"error\":\"内存分配失败\"}");
-        return " ";
-    }
-    
-    WiFiClient *stream = http.getStreamPtr();
-    long startMillis = GET_MS();
-    int iCount = 0;
-    while (iCount < payloadSize && (GET_MS() - startMillis) < 4000) {
-        if (stream->available()) {
-            compressedBuffer.get()[iCount++] = stream->read();
-        } else {
-            vTaskDelay(5);
-        }
-    }
+
+    // 使用 getString() 获取完整响应
+    String response = http.getString();
     http.end();
-    
+
+    // 解压 gzip 响应
+    const char* compressedData = response.c_str();
+    int compressedSize = response.length();
+
     char* jsonData = nullptr;
     size_t jsonDataLen = 0;
     zlib_turbo zt;
-    if (iCount >= 2 && compressedBuffer.get()[0] == 0x1f && compressedBuffer.get()[1] == 0x8b) {
-        int uncompSize = zt.gzip_info(compressedBuffer.get(), iCount);
+    if (compressedSize >= 2 && compressedData[0] == 0x1f && compressedData[1] == 0x8b) {
+        int uncompSize = zt.gzip_info(compressedData, compressedSize);
         if (uncompSize <= 0) {
             settingServer.send(500, "text/html; charset=utf-8", "{\"error\":\"Gzip解压失败\"}");
             return;
@@ -554,7 +542,7 @@ void fetchCitySearchResult(char* location) {
             return;
         }
 
-        int rc = zt.gunzip(compressedBuffer.get(), iCount, uncompressedBuffer.get());
+        int rc = zt.gunzip(compressedData, compressedSize, uncompressedBuffer.get());
         if (rc != ZT_SUCCESS) {
             char errBuf[96];
             snprintf(errBuf, sizeof(errBuf), "{\"error\":\"Gzip解压失败，错误代码：%d\"}", rc);
@@ -565,10 +553,9 @@ void fetchCitySearchResult(char* location) {
         jsonDataLen = uncompSize;
         // uncompressedBuffer 会在作用域结束时自动释放
     } else {
-        jsonData = (char*)compressedBuffer.get();
-        jsonDataLen = iCount;
+        jsonData = (char*)compressedData;
+        jsonDataLen = compressedSize;
     }
-    // compressedBuffer 会在作用域结束时自动释放
 
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, jsonData, jsonDataLen);

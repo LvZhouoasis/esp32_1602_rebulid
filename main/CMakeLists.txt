@@ -30,6 +30,7 @@ idf_component_register(
         "connectivity/http_server_wrapper.cpp"
         "connectivity/dns_server.cpp"
         "connectivity/tcp_server.cpp"
+        "connectivity/http_client_wrapper.cpp"
 
         # 服务层
         "services/protocol.cpp"

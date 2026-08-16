@@ -1,5 +1,6 @@
 #include "./applications/weather.h"
 #include "./hardware/buzzer.h"
+#include "./connectivity/http_client_wrapper.h"
 #include <cstring>
 
 // 天气服务，API接口通过ESP32向云端获取JSON数据
@@ -238,7 +239,7 @@ bool fetchWeatherData() {
         qweatherAuthConfigManager.getApiHost(), qweatherAuthConfigManager.getLocation());
     LOG_WEATHER_DEBUG("Final Request URL: %s", url);
 
-    HTTPClient http;
+    HttpClientWrapper http;
     http.begin(url);
     http.addHeader("Accept-Encoding", "gzip");                  // 请求 gzip 压缩响应
     char authHeader[560];
@@ -258,53 +259,16 @@ bool fetchWeatherData() {
         _playWeatherFailSoundThrottled();
         http.end();
         return false; // 直接返回，避免解析空数据
-    } 
-
-    // 获取响应体大小
-    int payloadSize = http.getSize();
-    if (payloadSize <= 0) {
-        LOG_WEATHER_ERROR("Empty response");
-        lcdText("Empty response", 1);
-        lcdText("", 2);
-        _playWeatherFailSoundThrottled();
-        http.end();
-        return false;
     }
 
-    // 使用RAII缓冲区
-    MemoryManager::SafeBuffer compressedBuffer(payloadSize + 8, "HTTP_Response");
-    if (!compressedBuffer.isValid()) {
-        LOG_WEATHER_ERROR("malloc failed for compressed buffer");
-        lcdText("Mem fail", 1);
-        lcdText("", 2);
-        _playWeatherFailSoundThrottled();
-        http.end();
-        return false;
-    }
-
-    // 读取数据到缓冲区
-    WiFiClient *stream = http.getStreamPtr();
-    long startMillis = GET_MS();
-    int iCount = 0;                 // 已读取字节数
-
-    while (iCount < payloadSize && (GET_MS() - startMillis) < 4000) {   // 最多等待4秒
-        if (stream->available()) {
-            compressedBuffer.get()[iCount++] = stream->read();
-        } else {
-            vTaskDelay(5);  // 延迟以避免占用过多资源
-        }
-    }
-    if((GET_MS() - startMillis) >= 4000){
-        LOG_WEATHER_ERROR("Read timeout");
-        lcdText("Read timeout", 1);
-        lcdText("", 2);
-        _playWeatherFailSoundThrottled();
-        http.end();
-        return false;
-    }
+    // 使用 getString() 获取完整响应
+    String response = http.getString();
     http.end();
 
-    if (iCount == 0) {
+    const char* compressedData = response.c_str();
+    int compressedSize = response.length();
+
+    if (compressedSize == 0) {
         LOG_WEATHER_ERROR("No data received");
         lcdText("No data received", 1);
         lcdText("", 2);
@@ -317,8 +281,8 @@ bool fetchWeatherData() {
     zlib_turbo zturbo;      // zlib_turbo 实例
 
     // 检查是否为 gzip 格式（检查前两个字节 0x1f 0x8b）
-    if (iCount >= 2 && compressedBuffer.get()[0] == 0x1f && compressedBuffer.get()[1] == 0x8b) {
-        int uncompSize = zturbo.gzip_info(compressedBuffer.get(), iCount); // 获取解压后大小
+    if (compressedSize >= 2 && compressedData[0] == 0x1f && compressedData[1] == 0x8b) {
+        int uncompSize = zturbo.gzip_info(compressedData, compressedSize); // 获取解压后大小
         if (uncompSize <= 0) {
             LOG_WEATHER_ERROR("get gzip_info failed");
             lcdText("Gzip info fail", 1);
@@ -338,7 +302,7 @@ bool fetchWeatherData() {
         }
 
         // 执行解压
-        int unzipResult = zturbo.gunzip(compressedBuffer.get(), iCount, uncompressedBuffer.get());
+        int unzipResult = zturbo.gunzip(compressedData, compressedSize, uncompressedBuffer.get());
         if (unzipResult != ZT_SUCCESS) {
             LOG_WEATHER_ERROR("Gzip decompress failed");
             lcdText("Gzip failed", 1);
@@ -350,10 +314,9 @@ bool fetchWeatherData() {
         jsonDataLen = uncompSize;
         // uncompressedBuffer 会在作用域结束时自动释放
     } else {
-        jsonData = (char*)compressedBuffer.get();
-        jsonDataLen = iCount;
+        jsonData = (char*)compressedData;
+        jsonDataLen = compressedSize;
     }
-    // compressedBuffer 会在作用域结束时自动释放
 
     if (jsonDataLen == 0 || jsonData == nullptr) {
         LOG_WEATHER_ERROR("Empty response");

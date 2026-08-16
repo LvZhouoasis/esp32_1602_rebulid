@@ -912,62 +912,76 @@ isRunning()                           // 检查服务器状态
 
 ---
 
-#### 阶段 7.4：TCP 服务器和客户端封装（待执行）
+#### ✅ 阶段 7.4：TCP 服务器和客户端封装（已完成）
 
-**目标**：替换 WiFiServer.h 和 WiFiClient.h 的所有调用
+**完成日期**：2026-08-16
 
-**封装类设计**：
+**新建文件**：
+- `include/connectivity/tcp_server.h` - TcpServer/TcpClient 类声明
+- `main/connectivity/tcp_server.cpp` - ESP-IDF BSD Socket 实现
+
+**封装的 API（兼容 Arduino WiFiServer/WiFiClient）**：
 ```cpp
-// include/connectivity/tcp_server.h
-class TcpServer {
-public:
-    TcpServer(int port);
-    void begin();
-    void end();
+// TcpServer
+TcpServer(port)                      // 构造函数
+begin()                              // 启动服务器监听
+end()                                // 停止服务器
+accept()                             // 接受客户端连接（非阻塞）
+isListening()                        // 检查是否正在监听
 
-#### 阶段 7.4：TCP 服务器和客户端封装（待执行）
-
-**目标**：替换 WiFiServer.h 和 WiFiClient.h 的所有调用
-
-**封装类设计**：
-```cpp
-// include/connectivity/tcp_server.h
-class TcpServer {
-public:
-    TcpServer(int port);
-    void begin();
-    void end();
-    TcpClient accept();
-};
-
-class TcpClient {
-public:
-    TcpClient();
-    bool connected();
-    int available();
-    int read(uint8_t* buffer, size_t length);
-    void stop();
-    void setNoDelay(bool enable);
-    IPAddress remoteIP();
-    int remotePort();
-    operator bool();
-};
+// TcpClient
+TcpClient()                          // 默认构造函数
+TcpClient(socket)                    // 从已连接的 socket 构造
+connected()                          // 检查是否已连接
+available()                          // 获取可读数据字节数
+read(buffer, length)                 // 读取数据
+stop()                               // 停止连接
+setNoDelay(enable)                   // 设置 TCP_NODELAY
+remoteIP()                           // 获取远程 IP 地址
+remotePort()                         // 获取远程端口
+operator bool()                      // 检查客户端是否有效
 ```
 
 **ESP-IDF 实现要点**：
-- 使用 BSD Socket API（`socket()`, `bind()`, `listen()`, `accept()`）
-- 使用 `setsockopt()` 设置 TCP_NODELAY
+- 使用 `socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)` 创建 TCP socket
+- 使用 `fcntl()` 设置非阻塞模式
+- 使用 `bind()` + `listen()` 启动服务器
+- 使用 `accept()` 接受客户端连接
+- 使用 `recv()` 接收数据
+- 使用 `setsockopt()` 设置 TCP_NODELAY 和 SO_REUSEADDR
 - 使用 `getpeername()` 获取远程 IP/端口
+- 使用 `ioctl(FIONREAD)` 获取可读数据字节数
 
-**需要修改的文件**：
-- `include/connectivity/network.h` - 替换 WiFiServer, WiFiClient 声明
-- `main/connectivity/network.cpp` - 替换 server.accept(), client 的所有调用
-- `include/hardware/button.h` - 替换 extern WiFiClient client
-- `main/services/ota_manager.cpp` - 替换 WiFiClient 使用
+**更新文件**：
+- `include/connectivity/network.h` - 使用 TcpServer/TcpClient 替代 WiFiServer/WiFiClient
+- `main/connectivity/network.cpp` - 使用新的类
+- `include/hardware/button.h` - 使用 TcpClient 替代 WiFiClient
+- `main/CMakeLists.txt` - 添加 tcp_server.cpp
 
-**预计工时**：2-3 天
+**说明**：
+- HTTPClient 和 WiFiClientSecure 的使用将在阶段 7.5 和 7.6 处理
+- ota_manager.cpp 中的 WiFiClient 使用将在阶段 7.6 处理
 
 ---
+
+#### 阶段 7.5：HTTP 客户端封装（待执行）
+
+**目标**：替换 HTTPClient.h 的所有调用
+
+**封装类设计**：
+```cpp
+// include/connectivity/http_client_wrapper.h
+class HttpClientWrapper {
+public:
+    HttpClientWrapper();
+    ~HttpClientWrapper();
+    bool begin(const char* url);
+    bool begin(TcpClient& client, const char* url);
+    void end();
+    void addHeader(const char* name, const char* value);
+    int GET();
+    int getSize();
+    TcpClient* getStreamPtr();
 
 #### 阶段 7.5：HTTP 客户端封装（待执行）
 
@@ -1174,7 +1188,7 @@ esp_pm_configure(&pm_config);
 | 4 | GPIO 和硬件抽象层 | 1-2 天 | ★★☆ | ✅ 已完成 |
 | 5 | I2C 通信迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
 | 6 | SPIFFS 文件系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
-| 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | 🔄 进行中（7.1-7.3已完成） |
+| 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | 🔄 进行中（7.1-7.4已完成） |
 | 8 | 第三方库适配和清理 | 2-3 天 | ★★☆ | ⏳ 待执行 |
 | **总计** | - | **25-37 天** | - | 6.1/8 完成 |
 
