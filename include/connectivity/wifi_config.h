@@ -15,12 +15,11 @@
 #include "./hardware/rgb_led.h"
 #include "./connectivity/network.h"
 #include "./connectivity/wifi_esp32.h"
+#include "./connectivity/http_server_wrapper.h"
 #include "./services/web_pages.h"
 #include "./services/wifi_config_manager.h"
 #include "./services/time_manager.h"
 
-// 前向声明HTTP服务器类（将在阶段7.2实现）
-class HttpServer;
 extern HttpServer apServer;                      /**< 配网模式使用的 Web 服务器 */
 
 enum WifiScanState {

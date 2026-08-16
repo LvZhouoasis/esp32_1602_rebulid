@@ -6,12 +6,15 @@
 #include "./services/config_manager.h"
 #include "./hardware/buzzer.h"
 #include "./applications/weather.h"
-#include "esp32-hal-cpu.h"
+#include "./connectivity/wifi_esp32.h"
+#include "./connectivity/http_server_wrapper.h"
 #include <cstring>
+#include "esp_system.h"
+#include "esp_clk_tree.h"
 
 extern QWeatherAuthConfigManager qweatherAuthConfigManager;
 
-WebServer settingServer(80);
+HttpServer settingServer(80);
 volatile bool isConfigDone = false;
 volatile bool isKeyDone = false;
 volatile bool otaUploadSuccess = false;
@@ -57,7 +60,7 @@ void webSettingHandleDeviceBasicInfo() {
         "\"uptimeMs\":%lu,\"cpuFreqMHz\":%u,\"freeHeap\":%u,\"totalHeap\":%u,"
         "\"freePsram\":%u,\"totalPsram\":%u,\"resetReason\":%d}",
         PROJECT_VERSION, BUILD_VERSION, BUILD_TIMESTAMP,
-        uptimeMs, getCpuFrequencyMhz(), freeHeap, totalHeap,
+        uptimeMs, (unsigned)(esp_clk_cpu_freq() / 1000000), freeHeap, totalHeap,
         freePsram, totalPsram, (int)esp_reset_reason());
 
     settingServer.send(200, "application/json; charset=utf-8", json);

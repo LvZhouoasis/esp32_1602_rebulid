@@ -4,8 +4,7 @@
 extern WifiConfigManager wifiConfigManager;
 
 // 配网模式使用的 Web 服务器（监听端口 80）
-// TODO: 阶段7.2将实现HttpServer类
-// HttpServer apServer(80);
+HttpServer apServer(80);
 
 // DNS 服务器用于强制门户
 // TODO: 阶段7.3将实现DNS服务器

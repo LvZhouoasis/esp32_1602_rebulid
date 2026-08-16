@@ -32,6 +32,12 @@
 #define WIFI_AUTH_WPA2_PSK  3
 #define WIFI_AUTH_WPA_WPA2_PSK 4
 
+// WiFi模式（兼容Arduino WIFI_常量）
+#define WIFI_STA    WIFI_MODE_STA
+#define WIFI_AP     WIFI_MODE_AP
+#define WIFI_AP_STA WIFI_MODE_APSTA
+#define WIFI_OFF    WIFI_MODE_NULL
+
 /**
  * @brief IP地址封装类（兼容Arduino IPAddress）
  */
