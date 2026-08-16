@@ -1026,17 +1026,26 @@ connected()                          // 检查是否已连接
 
 ---
 
-#### 阶段 7.6：OTA 升级迁移（待执行）
+#### ✅ 阶段 7.6：OTA 升级迁移（已完成）
 
-**目标**：替换 Update.h 和 WiFiClientSecure.h 的调用
+**完成日期**：2026-08-16
 
-**封装设计**：
+**新建文件**：
+- `include/services/ota_esp32.h` - OTAUpdate 类声明
+- `main/services/ota_esp32.cpp` - ESP-IDF esp_ota_ops 实现
+
+**封装的 API（兼容 Arduino Update）**：
 ```cpp
-// 使用 esp_ota_ops.h
-bool otaBegin(size_t size);
-bool otaWrite(const uint8_t* data, size_t length);
-bool otaEnd();
-void otaAbort();
+OTAUpdate()                          // 构造函数
+~OTAUpdate()                         // 析构函数
+begin(size)                          // 开始 OTA 升级
+write(data, length)                  // 写入固件数据
+end(restart)                         // 结束 OTA 升级
+abort()                              // 中止 OTA 升级
+getError()                           // 获取错误代码
+errorString()                        // 获取错误信息
+written()                            // 获取已写入字节数
+isRunning()                          // 检查是否正在运行
 ```
 
 **ESP-IDF 实现要点**：
@@ -1045,12 +1054,44 @@ void otaAbort();
 - 使用 `esp_ota_write()` 写入数据
 - 使用 `esp_ota_end()` 完成 OTA
 - 使用 `esp_ota_set_boot_partition()` 设置启动分区
+- 使用 `esp_ota_abort()` 中止 OTA
 
-**需要修改的文件**：
-- `include/services/ota_manager.h` - 移除 Arduino OTA 头文件
-- `main/services/ota_manager.cpp` - 替换 Update 类的所有调用
+**更新文件**：
+- `include/services/ota_manager.h` - 移除 Arduino OTA 头文件，使用新的类
+- `main/services/ota_manager.cpp` - 使用 OTAUpdate 和 HttpClientWrapper
+- `main/CMakeLists.txt` - 添加 ota_esp32.cpp
 
-**预计工时**：1-2 天
+**说明**：
+- 使用 HttpClientWrapper 替代 HTTPClient 下载固件
+- 使用 OTAUpdate 替代 Arduino Update 类
+- 支持 HTTP 和 HTTPS（通过 esp_http_client）
+
+---
+
+#### 阶段 7.7：清理和测试（待执行）
+
+**目标**：移除所有 Arduino WiFi 相关头文件，确保编译通过
+
+**需要移除的头文件**：
+- `#include <WiFi.h>`
+- `#include <WebServer.h>`
+- `#include <DNSServer.h>`
+- `#include <HTTPClient.h>`
+- `#include <WiFiClientSecure.h>`
+- `#include <Update.h>`
+- `#include <WiFiServer.h>`
+- `#include <WiFiClient.h>`
+
+**功能验证**：
+1. WiFi 连接功能
+2. AP 配网模式
+3. TCP 服务器连接
+4. Web 设置页面
+5. OTA 升级
+6. 天气 API 调用
+7. 深度睡眠唤醒后 WiFi 恢复
+
+**预计工时**：1 天
 
 ---
 
@@ -1193,7 +1234,7 @@ esp_pm_configure(&pm_config);
 | 4 | GPIO 和硬件抽象层 | 1-2 天 | ★★☆ | ✅ 已完成 |
 | 5 | I2C 通信迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
 | 6 | SPIFFS 文件系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
-| 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | 🔄 进行中（7.1-7.5已完成） |
+| 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | 🔄 进行中（7.1-7.6已完成） |
 | 8 | 第三方库适配和清理 | 2-3 天 | ★★☆ | ⏳ 待执行 |
 | **总计** | - | **25-37 天** | - | 6.1/8 完成 |
 

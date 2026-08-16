@@ -1,7 +1,7 @@
 #ifndef TIME_MANAGER_H
 #define TIME_MANAGER_H
 
-#include <WiFi.h>
+#include "./connectivity/wifi_esp32.h"
 #include "soc/rtc.h"
 
 #include "mydefine.h"
