@@ -261,14 +261,15 @@ bool fetchWeatherData() {
         return false; // 直接返回，避免解析空数据
     }
 
-    // 使用 getString() 获取完整响应
-    const char* response = http.getString();
+    // 使用 getResponseData() 获取完整响应（支持二进制数据如gzip）
+    size_t responseLen = 0;
+    const uint8_t* responseData = http.getResponseData(&responseLen);
     http.end();
 
-    const char* compressedData = response;
-    int compressedSize = strlen(response);
+    const char* compressedData = (const char*)responseData;
+    int compressedSize = responseLen;
 
-    if (compressedSize == 0) {
+    if (compressedSize == 0 || responseData == nullptr) {
         LOG_WEATHER_ERROR("No data received");
         lcdText("No data received", 1);
         lcdText("", 2);

@@ -87,6 +87,40 @@ inline void setOutput(int pin) {
 }
 
 /**
+ * @brief 将指定 GPIO 引脚配置为输入模式（带内部下拉）
+ *
+ * @param[in] pin GPIO 引脚号
+ *
+ * @note 启用内部下拉，禁用上拉电阻，用于按钮等输入
+ */
+inline void setInputPullDown(int pin) {
+    gpio_config_t io_conf = {};
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pin_bit_mask = 1ULL << pin;
+    io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;   // 启用内部下拉
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;      // 禁用上拉
+    gpio_config(&io_conf);
+}
+
+/**
+ * @brief 将指定 GPIO 引脚配置为输入模式（带内部上拉）
+ *
+ * @param[in] pin GPIO 引脚号
+ *
+ * @note 启用内部上拉，禁用下拉电阻，用于按钮等输入
+ */
+inline void setInputPullUp(int pin) {
+    gpio_config_t io_conf = {};
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pin_bit_mask = 1ULL << pin;
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;  // 禁用内部下拉
+    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;       // 启用内部上拉
+    gpio_config(&io_conf);
+}
+
+/**
  * @brief 设置 GPIO 引脚模式（替代 Arduino pinMode）
  *
  * @param[in] pin GPIO 引脚号
@@ -102,40 +136,6 @@ inline void pinMode(int pin, int mode) {
     } else {
         gpio_set_direction((gpio_num_t)pin, GPIO_MODE_INPUT);
     }
-}
-
-/**
- * @brief 将指定 GPIO 引脚配置为输入模式（带内部下拉）
- * 
- * @param[in] pin GPIO 引脚号
- * 
- * @note 启用内部下拉，禁用上拉电阻，用于按钮等输入
- */
-inline void setInputPullDown(int pin) {
-    gpio_config_t io_conf = {};
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pin_bit_mask = 1ULL << pin;
-    io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;   // 启用内部下拉
-    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;      // 禁用上拉
-    gpio_config(&io_conf);
-}
-
-/**
- * @brief 将指定 GPIO 引脚配置为输入模式（带内部上拉）
- * 
- * @param[in] pin GPIO 引脚号
- * 
- * @note 启用内部上拉，禁用下拉电阻，用于按钮等输入
- */
-inline void setInputPullUp(int pin) {
-    gpio_config_t io_conf = {};
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pin_bit_mask = 1ULL << pin;
-    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;  // 禁用内部下拉
-    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;       // 启用内部上拉
-    gpio_config(&io_conf);
 }
 
 /**

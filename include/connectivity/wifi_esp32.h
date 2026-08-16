@@ -79,6 +79,8 @@ private:
     static int _scanCount;
     static WiFiScanResult* _scanResults;
     static char _macBuffer[18];  // 用于macAddress()的缓冲区
+    static bool _autoReconnect;  // 是否自动重连
+    static bool _userDisconnect;  // 用户主动断开标志
 
     static void _eventHandler(void* arg, esp_event_base_t eventBase,
                              int32_t eventId, void* eventData);

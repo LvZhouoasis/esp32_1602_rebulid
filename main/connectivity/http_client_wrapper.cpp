@@ -164,7 +164,55 @@ const char* HttpClientWrapper::getString() {
     }
 
     _responseBuffer[read_len] = '\0';
+    _responseBufferSize = read_len;  // 保存实际长度
     return _responseBuffer;
+}
+
+const uint8_t* HttpClientWrapper::getResponseData(size_t* len) {
+    if (!_initialized || _client == nullptr) {
+        if (len) *len = 0;
+        return nullptr;
+    }
+
+    // 如果还没有发送请求，先发送 GET
+    if (_httpCode == -1) {
+        if (GET() < 0) {
+            if (len) *len = 0;
+            return nullptr;
+        }
+    }
+
+    // 释放之前的缓冲区
+    if (_responseBuffer) {
+        free(_responseBuffer);
+        _responseBuffer = nullptr;
+    }
+
+    // 读取响应体
+    int content_length = esp_http_client_get_content_length(_client);
+    if (content_length <= 0) {
+        content_length = 4096;  // 默认缓冲区大小
+    }
+
+    _responseBuffer = (char*)malloc(content_length);
+    if (_responseBuffer == nullptr) {
+        ESP_LOGE(TAG, "Failed to allocate response buffer");
+        if (len) *len = 0;
+        return nullptr;
+    }
+
+    int read_len = esp_http_client_read_response(_client, _responseBuffer, content_length);
+    if (read_len < 0) {
+        free(_responseBuffer);
+        _responseBuffer = nullptr;
+        ESP_LOGE(TAG, "Failed to read response");
+        if (len) *len = 0;
+        return nullptr;
+    }
+
+    _responseBufferSize = read_len;
+    if (len) *len = read_len;
+    return (const uint8_t*)_responseBuffer;
 }
 
 bool HttpClientWrapper::connected() {

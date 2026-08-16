@@ -19,6 +19,8 @@ char WiFiClass::_connectedSSID[33] = "";
 int WiFiClass::_scanCount = 0;
 WiFiScanResult* WiFiClass::_scanResults = nullptr;
 char WiFiClass::_macBuffer[18] = "";
+bool WiFiClass::_autoReconnect = true;
+bool WiFiClass::_userDisconnect = false;
 
 // 全局WiFi实例
 WiFiClass WiFi;
@@ -71,8 +73,12 @@ void WiFiClass::_eventHandler(void* arg, esp_event_base_t eventBase,
                     (wifi_event_sta_disconnected_t*)eventData;
                 ESP_LOGW(TAG, "Disconnected, reason=%d", event->reason);
                 _status = WL_DISCONNECTED;
-                // 尝试重连
-                esp_wifi_connect();
+                // 只有在启用自动重连且不是用户主动断开时才重连
+                if (_autoReconnect && !_userDisconnect) {
+                    ESP_LOGI(TAG, "Auto reconnecting...");
+                    esp_wifi_connect();
+                }
+                _userDisconnect = false;  // 重置标志
                 break;
             }
 
@@ -193,6 +199,7 @@ int WiFiClass::begin(const char* ssid, const char* password) {
 // 断开连接
 void WiFiClass::disconnect(bool wifiOff) {
     ESP_LOGI(TAG, "Disconnecting...");
+    _userDisconnect = true;  // 标记为用户主动断开
     esp_wifi_disconnect();
     _status = WL_DISCONNECTED;
     _connectedSSID[0] = '\0';
@@ -309,8 +316,7 @@ bool WiFiClass::setTxPower(int power) {
 
 // 设置自动重连
 void WiFiClass::setAutoReconnect(bool autoReconnect) {
-    // ESP-IDF默认会自动重连，这里不需要特别处理
-    (void)autoReconnect;
+    _autoReconnect = autoReconnect;
 }
 
 // 设置持久化

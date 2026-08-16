@@ -73,11 +73,12 @@ OTAResult otaUpdateFromURL(const char* url, bool useHTTPS) {
         return OTA_FAIL_WRITE;
     }
 
-    // 获取响应数据并写入 OTA
-    const char* response = http.getString();
+    // 获取响应数据并写入 OTA（使用 getResponseData 支持二进制数据）
+    size_t responseLen = 0;
+    const uint8_t* responseData = http.getResponseData(&responseLen);
     http.end();
 
-    if (strlen(response) == 0) {
+    if (responseLen == 0 || responseData == nullptr) {
         strlcpy(g_otaLastError, "No data received", sizeof(g_otaLastError));
         LOG_SYSTEM_ERROR("OTA: No data received");
         otaUpdate.abort();
@@ -90,8 +91,7 @@ OTAResult otaUpdateFromURL(const char* url, bool useHTTPS) {
     }
 
     // 写入固件数据
-    size_t responseLen = strlen(response);
-    size_t written = otaUpdate.write((const uint8_t*)response, responseLen);
+    size_t written = otaUpdate.write(responseData, responseLen);
     if (written != responseLen) {
         snprintf(g_otaLastError, sizeof(g_otaLastError), "Write failed: %s", otaUpdate.errorString());
         LOG_SYSTEM_ERROR("OTA write error: %s", g_otaLastError);

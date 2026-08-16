@@ -68,6 +68,13 @@ public:
     const char* getString();
 
     /**
+     * @brief 获取响应体数据（支持二进制数据）
+     * @param[out] len 数据长度
+     * @return 响应体数据指针，失败返回 nullptr
+     */
+    const uint8_t* getResponseData(size_t* len);
+
+    /**
      * @brief 检查是否已连接
      * @return true 已连接，false 未连接
      */

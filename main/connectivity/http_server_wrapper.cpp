@@ -242,9 +242,9 @@ esp_err_t HttpServer::_handleUpload(httpd_req_t* req) {
                 accumLen += received;
 
                 // 如果还没找到头部结束标记，尝试查找
-                if (!headerParsed) {
+                if (!headerParsed && accumLen >= 4) {
                     // 查找 \r\n\r\n（头部结束）
-                    for (size_t j = 0; j < accumLen - 3; j++) {
+                    for (size_t j = 0; j <= accumLen - 4; j++) {
                         if (accumBuffer[j] == '\r' && accumBuffer[j+1] == '\n' &&
                             accumBuffer[j+2] == '\r' && accumBuffer[j+3] == '\n') {
                             headerParsed = true;
