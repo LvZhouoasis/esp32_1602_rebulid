@@ -36,9 +36,11 @@ void generateSeed32();
  * @param kid Key ID，用于 JWT header
  * @param projectID 项目 ID，用于 JWT payload
  * @param seed32 32 字节 Ed25519 种子，用于生成密钥对和签名
- * @return 生成的 JWT Token 字符串
+ * @param output 输出缓冲区
+ * @param outputSize 缓冲区大小
+ * @return 生成的 JWT Token 字符串长度，0表示失败
  */
-String generate_jwt(const String& kid, const String& projectID, const uint8_t* seed32);
+size_t generate_jwt(const char* kid, const char* projectID, const uint8_t* seed32, char* output, size_t outputSize);
 
 // 检测 base64 PKCS#8 Ed25519 私钥 (返回是否有效)
 bool validate_base64_ed25519_key(const char* base64);

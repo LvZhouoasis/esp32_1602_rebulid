@@ -288,9 +288,10 @@ void setup() {
     xTaskCreatePinnedToCore(_taskHealthMonitorTask, "TaskHealth", 3072, NULL, 1, &s_taskHealthMonitorHandle, 0);
 
     // 欢迎消息
-    String ver = String(PROJECT_VERSION) + "  " +String(BUILD_VERSION);
-    lcdText(ver,1);
-    lcdText(BUILD_TIMESTAMP,2);
+    char ver[32];
+    snprintf(ver, sizeof(ver), "%s  %s", PROJECT_VERSION, BUILD_VERSION);
+    lcdText(ver, 1);
+    lcdText(BUILD_TIMESTAMP, 2);
 
     // 挂载 SPIFFS
     if(!ConfigManager::initSPIFFS()) { 
@@ -301,14 +302,14 @@ void setup() {
     // 初始化配置管理器
     if(!wifiConfigManager.init()){ 
         LOG_SYSTEM_ERROR("WiFi config manager initialization failed!");
-        LOG_SYSTEM_ERROR("Last error: %s", wifiConfigManager.getLastErrorString(wifiConfigManager.getLastError()).c_str());
+        LOG_SYSTEM_ERROR("Last error: %s", wifiConfigManager.getLastErrorString(wifiConfigManager.getLastError()));
         fatalError("WiFi config init failed"); 
     }
     
     // 初始化和风天气配置管理器
     if(!qweatherAuthConfigManager.init()){ 
         LOG_SYSTEM_ERROR("QWeather config manager initialization failed!");
-        LOG_SYSTEM_ERROR("Last error: %s", qweatherAuthConfigManager.getLastErrorString(qweatherAuthConfigManager.getLastError()).c_str());
+        LOG_SYSTEM_ERROR("Last error: %s", qweatherAuthConfigManager.getLastErrorString(qweatherAuthConfigManager.getLastError()));
         fatalError("QWeather auth config init failed"); 
     }
 
@@ -357,7 +358,7 @@ void loop(){
         // 配网完成后延迟重启（不在回调中直接调用，避免 WiFi 事件卡死）
         if (pendingRestart) {
             WAIT_MS(500);
-            ESP.restart();
+            esp_restart();
         }
     }
 

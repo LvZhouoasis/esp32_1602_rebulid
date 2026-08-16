@@ -1,7 +1,9 @@
 #include "./services/wifi_config_manager.h"
 
-WifiConfigManager::WifiConfigManager(const String& configFilePath) : ConfigManager(configFilePath), ssid(""), password("") {
-    LOG_CONFIG_INFO("WifiConfigManager initialized with config file: %s", configFilePath.c_str());
+WifiConfigManager::WifiConfigManager(const char* configFilePath) : ConfigManager(configFilePath) {
+    ssid[0] = '\0';
+    password[0] = '\0';
+    LOG_CONFIG_INFO("WifiConfigManager initialized with config file: %s", configFilePath);
 }
 
 WifiConfigManager::~WifiConfigManager() {
@@ -22,7 +24,7 @@ bool WifiConfigManager::init() {
             return true;
         }
         else{
-            LOG_CONFIG_ERROR("Failed to load WiFi config with error: %s", getLastErrorString(lastError).c_str());
+            LOG_CONFIG_ERROR("Failed to load WiFi config with error: %s", getLastErrorString(lastError));
             return false;
         }
     }
@@ -30,19 +32,19 @@ bool WifiConfigManager::init() {
 }
 
 bool WifiConfigManager::loadConfig() {
-    LOG_CONFIG_DEBUG("Loading WiFi config from file: %s", configFilePath.c_str());
-    String configContent;
-    if (!readFile(configContent)) {
+    LOG_CONFIG_DEBUG("Loading WiFi config from file: %s", configFilePath);
+    char configContent[256];
+    if (!readFile(configContent, sizeof(configContent))) {
         LOG_CONFIG_WARN("Failed to read WiFi config file");
         return false;
     }
 
-    if (configContent.length() == 0) {
+    if (strlen(configContent) == 0) {
         LOG_CONFIG_WARN("WiFi config file is empty");
         setLastError(Error::InvalidData);  // 文件存在但为空,属于无效数据
         return false;
     }
-    
+
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, configContent);
     if (error) {
@@ -51,78 +53,80 @@ bool WifiConfigManager::loadConfig() {
         return false;
     }
 
-    ssid = doc["ssid"].as<String>();
-    password = doc["password"].as<String>();
+    strlcpy(ssid, doc["ssid"] | "", sizeof(ssid));
+    strlcpy(password, doc["password"] | "", sizeof(password));
 
     // 验证 SSID 不为空(password 可以为空,用于开放网络)
-    if(ssid.length() == 0) {
+    if(strlen(ssid) == 0) {
         LOG_CONFIG_WARN("WiFi config has empty SSID, waiting for user configuration");
         setLastError(Error::InvalidData);  // SSID 为空,属于无效数据而非文件不存在
         return false;
     }
 
-    LOG_CONFIG_DEBUG("WiFi config loaded successfully - SSID: %s", ssid.c_str());
+    LOG_CONFIG_DEBUG("WiFi config loaded successfully - SSID: %s", ssid);
     return true;
 }
 
 bool WifiConfigManager::saveConfig() {
-    LOG_CONFIG_DEBUG("Saving WiFi config to file: %s", configFilePath.c_str());
+    LOG_CONFIG_DEBUG("Saving WiFi config to file: %s", configFilePath);
     JsonDocument doc;
     doc["ssid"] = ssid;
     doc["password"] = password;
 
-    String jsonString;
-    serializeJson(doc, jsonString);
+    char jsonString[128];
+    serializeJson(doc, jsonString, sizeof(jsonString));
 
     if(writeFile(jsonString)){
         LOG_CONFIG_INFO("WiFi config saved successfully");
-        LOG_CONFIG_DEBUG("WiFi config content: %s", jsonString.c_str());
+        LOG_CONFIG_DEBUG("WiFi config content: %s", jsonString);
         return true;
     }
     else{
         LOG_CONFIG_ERROR("Failed to write WiFi config to file");
         return false;
-    }   
+    }
 }
 
 bool WifiConfigManager::resetConfig() {
     LOG_CONFIG_INFO("Resetting WiFi config to defaults");
-    ssid = "";
-    password = "";
-
-    if(saveConfig()) return true;;
-    return false;
-}
-
-String WifiConfigManager::getSSID() {
-    return ssid;
-}
-
-String WifiConfigManager::getPassword() {
-    return password;
-}
-
-bool WifiConfigManager::setSSID(const String& newSsid) {
-    if(newSsid.length() > 32 || newSsid.length() == 0) {
-        LOG_CONFIG_ERROR("SSID length invalid: %d", newSsid.length());
-        return false;
-    }
-
-    ssid = newSsid;
-    LOG_CONFIG_INFO("WiFi SSID set to: %s", ssid.c_str());
+    ssid[0] = '\0';
+    password[0] = '\0';
 
     if(saveConfig()) return true;
     return false;
 }
 
-bool WifiConfigManager::setPassword(const String& newPassword) {
-    if(newPassword.length() > 63 || (newPassword.length() < 8 && newPassword.length() != 0)) {
-        LOG_CONFIG_ERROR("Password length invalid: %d", newPassword.length());
+const char* WifiConfigManager::getSSID() {
+    return ssid;
+}
+
+const char* WifiConfigManager::getPassword() {
+    return password;
+}
+
+bool WifiConfigManager::setSSID(const char* newSsid) {
+    size_t len = strlen(newSsid);
+    if(len > 32 || len == 0) {
+        LOG_CONFIG_ERROR("SSID length invalid: %d", len);
         return false;
     }
-    password = newPassword;
-    LOG_CONFIG_INFO("WiFi password set to: %s", password.c_str());
 
-    if(saveConfig()) return true;;
+    strlcpy(ssid, newSsid, sizeof(ssid));
+    LOG_CONFIG_INFO("WiFi SSID set to: %s", ssid);
+
+    if(saveConfig()) return true;
+    return false;
+}
+
+bool WifiConfigManager::setPassword(const char* newPassword) {
+    size_t len = strlen(newPassword);
+    if(len > 63 || (len < 8 && len != 0)) {
+        LOG_CONFIG_ERROR("Password length invalid: %d", len);
+        return false;
+    }
+    strlcpy(password, newPassword, sizeof(password));
+    LOG_CONFIG_INFO("WiFi password set to: %s", password);
+
+    if(saveConfig()) return true;
     return false;
 }

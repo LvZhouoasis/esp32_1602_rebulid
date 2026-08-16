@@ -1,9 +1,7 @@
 #ifndef WEB_PAGES_H
 #define WEB_PAGES_H
 
-#include <pgmspace.h>
-
-const char webComponent[] PROGMEM = R"rawliteral(
+const char webComponent[] = R"rawliteral(
 
 <script>
 class WebStyles extends HTMLElement {
@@ -190,7 +188,7 @@ customElements.define('web-styles', WebStyles);
 
 
 
-const char index_html[] PROGMEM = R"rawliteral(
+const char index_html[] = R"rawliteral(
 
 <!DOCTYPE html>
 <html>
@@ -710,7 +708,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 
 
 
-const char ota_html[] PROGMEM = R"rawliteral(
+const char ota_html[] = R"rawliteral(
 
 <!DOCTYPE html>
 <html>
@@ -910,7 +908,7 @@ const char ota_html[] PROGMEM = R"rawliteral(
 
 
 
-const char city_search_html[] PROGMEM = R"rawliteral(
+const char city_search_html[] = R"rawliteral(
 
 <!DOCTYPE html>
 <html>
@@ -1126,7 +1124,7 @@ const char city_search_html[] PROGMEM = R"rawliteral(
 )rawliteral";
 
 
-const char wifiConfigHtml[] PROGMEM = R"rawliteral(
+const char wifiConfigHtml[] = R"rawliteral(
 
 <!DOCTYPE html>
 <html>
@@ -1514,7 +1512,7 @@ const char wifiConfigHtml[] PROGMEM = R"rawliteral(
 
 
 
-const unsigned char favicon_ico[] PROGMEM = {
+const unsigned char favicon_ico[] = {
   0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x20, 0x20, 0x00, 0x00, 0x01, 0x00,
   0x20, 0x00, 0xa8, 0x10, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00, 0x28, 0x00,
   0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x01, 0x00,

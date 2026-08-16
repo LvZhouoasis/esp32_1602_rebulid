@@ -289,7 +289,7 @@ void lcdInit(){
 }
 
 // 显示函数(用于简单显示/调试)
-void lcdText(const String& ltext,int line){
+void lcdText(const char* ltext, int line){
     // 设置行地址
     int rowStart = 0;
     if (line == 1)
@@ -299,7 +299,7 @@ void lcdText(const String& ltext,int line){
     else
         return;     // 非法行号，直接返回
 
-    int tsize = ltext.length();
+    int tsize = strlen(ltext);
     for(int size = 0; size < 16; size++){     // 逐字写入待渲染缓冲
         uint8_t code = 0x20;
         if (size <= tsize - 1) {
@@ -337,7 +337,7 @@ void lcdClear(){
 // 光标向后移动一格
 void _nextCursor(){
     if (lcdCursor >= LCD_DDRAM_SIZE) {
-        LOG_LCD_WARN("LCD cursor out of bounds: " + String(lcdCursor));
+        LOG_LCD_WARN("LCD cursor out of bounds: %d", lcdCursor);
         lcdCursor = LCD_DDRAM_SIZE;   // 将光标设置为显示区域外
         return;
     }
@@ -390,19 +390,15 @@ void lcdDisChar(char text){             //显示函数
 }
 
 // 连续显示整段的普通字符，不清除其他的内容，注意越界
-void lcdPrint(const String& s) {
-    for (unsigned int i = 0; i < s.length(); i++) {
-        _queueCharAt(static_cast<uint8_t>(lcdCursor), static_cast<uint8_t>(s[i]));
-        _nextCursor();
-    }
-    _flushPendingFrame();
-}
-
 void lcdPrint(const char* s) {
     if (s == nullptr) {
         return;
     }
-    lcdPrint(String(s));
+    for (size_t i = 0; i < strlen(s); i++) {
+        _queueCharAt(static_cast<uint8_t>(lcdCursor), static_cast<uint8_t>(s[i]));
+        _nextCursor();
+    }
+    _flushPendingFrame();
 }
 
 uint8_t lcdRenderDiff(const uint8_t ddram32[32], const uint8_t cgram8x8[8][8], const bool cgramUsed[8]) {

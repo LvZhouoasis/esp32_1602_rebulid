@@ -2,7 +2,7 @@
 
 namespace {
 int g_otaProgress = 0;
-String g_otaLastError = "";
+char g_otaLastError[128] = "";
 volatile OTAStatus g_otaCurrentStatus = OTA_IDLE;
 volatile OTAResult g_otaCurrentResult = OTA_IN_PROGRESS;
 
@@ -10,8 +10,8 @@ bool otaDownloadFirmware(HTTPClient& http, size_t contentLength) {
     WiFiClient* stream = http.getStreamPtr();       //使用传入的http客户端获取流
     
     if (!stream) {
-        g_otaLastError = "Stream pointer is null";
-        LOG_SYSTEM_ERROR("OTA: %s", g_otaLastError.c_str());
+        strlcpy(g_otaLastError, "Stream pointer is null", sizeof(g_otaLastError));
+        LOG_SYSTEM_ERROR("OTA: %s", g_otaLastError);
         return false;
     }
     
@@ -34,8 +34,8 @@ bool otaDownloadFirmware(HTTPClient& http, size_t contentLength) {
             
             // 写入缓冲区数据到Flash
             if (Update.write(buff, currentSize) != currentSize) {
-                g_otaLastError = "Write failed at " + String(written);
-                LOG_SYSTEM_ERROR("OTA write error: %s", g_otaLastError.c_str());
+                snprintf(g_otaLastError, sizeof(g_otaLastError), "Write failed at %zu", written);
+                LOG_SYSTEM_ERROR("OTA write error: %s", g_otaLastError);
                 return false;
             }
             
@@ -48,8 +48,11 @@ bool otaDownloadFirmware(HTTPClient& http, size_t contentLength) {
                 if (g_otaProgress != lastDisplayedProgress) {
                     LOG_SYSTEM_DEBUG("OTA Progress: %d%% (%d/%d bytes)", 
                                     g_otaProgress, written, contentLength);
-                    lcdText("Updating: " + String(g_otaProgress) + "%", 1);
-                    lcdText("" + String(written/1024) + "/" + String(contentLength/1024) + " KB", 2);
+                    char lcdBuf[17];
+                    snprintf(lcdBuf, sizeof(lcdBuf), "Updating: %d%%", g_otaProgress);
+                    lcdText(lcdBuf, 1);
+                    snprintf(lcdBuf, sizeof(lcdBuf), "%zu/%zu KB", written/1024, contentLength/1024);
+                    lcdText(lcdBuf, 2);
                     lastDisplayedProgress = g_otaProgress;
                 }
                 lastProgressTime = now;
@@ -61,8 +64,8 @@ bool otaDownloadFirmware(HTTPClient& http, size_t contentLength) {
     
     // 验证下载完整性
     if (written != contentLength) {
-        g_otaLastError = "Download incomplete: " + String(written) + "/" + String(contentLength);
-        LOG_SYSTEM_ERROR("OTA: %s", g_otaLastError.c_str());
+        snprintf(g_otaLastError, sizeof(g_otaLastError), "Download incomplete: %zu/%zu", written, contentLength);
+        LOG_SYSTEM_ERROR("OTA: %s", g_otaLastError);
         lcdText("OTA Failed!", 1);
         lcdText("Incomplete DL", 2);
         return false;
@@ -80,9 +83,9 @@ void otaInit() {
     g_otaCurrentResult = OTA_IN_PROGRESS;
 }
 
-OTAResult otaUpdateFromURL(const String& url, bool useHTTPS) {
+OTAResult otaUpdateFromURL(const char* url, bool useHTTPS) {
     g_otaProgress = 0;
-    g_otaLastError = "";
+    g_otaLastError[0] = '\0';
     g_otaCurrentStatus = OTA_RUNNING;
     g_otaCurrentResult = OTA_IN_PROGRESS;
     
@@ -100,7 +103,7 @@ OTAResult otaUpdateFromURL(const String& url, bool useHTTPS) {
     HTTPClient http;
     http.begin(*client, url);
     
-    LOG_SYSTEM_INFO("Starting OTA from URL: %s", url.c_str());
+    LOG_SYSTEM_INFO("Starting OTA from URL: %s", url);
     lcdText("OTA Starting...", 1);
     lcdText("Connecting...", 2);
     updateColor(CRGB::Orange);
@@ -108,7 +111,7 @@ OTAResult otaUpdateFromURL(const String& url, bool useHTTPS) {
     int httpCode = http.GET();
     
     if (httpCode != HTTP_CODE_OK) {
-        g_otaLastError = "HTTP Error: " + String(httpCode);
+        snprintf(g_otaLastError, sizeof(g_otaLastError), "HTTP Error: %d", httpCode);
         LOG_SYSTEM_ERROR("OTA HTTP failed: %d", httpCode);
         http.end();
         lcdText("OTA Failed!", 1);
@@ -121,7 +124,7 @@ OTAResult otaUpdateFromURL(const String& url, bool useHTTPS) {
     
     size_t contentLength = http.getSize();
     if (contentLength == 0) {
-        g_otaLastError = "Content-Length is 0";
+        strlcpy(g_otaLastError, "Content-Length is 0", sizeof(g_otaLastError));
         LOG_SYSTEM_ERROR("OTA: Invalid content length");
         lcdText("OTA Failed!", 1);
         lcdText("No Content", 2);
@@ -133,11 +136,13 @@ OTAResult otaUpdateFromURL(const String& url, bool useHTTPS) {
     
     LOG_SYSTEM_INFO("Firmware size: %d bytes", contentLength);
     lcdText("Downloading...", 1);
-    lcdText("Size: " + String(contentLength) + " bytes", 2);
+    char lcdBuf[17];
+    snprintf(lcdBuf, sizeof(lcdBuf), "Size: %zu B", contentLength);
+    lcdText(lcdBuf, 2);
     
     if (!Update.begin(contentLength)) {
-        g_otaLastError = "Not enough space: " + String(Update.errorString());
-        LOG_SYSTEM_ERROR("OTA begin failed: %s", g_otaLastError.c_str());
+        snprintf(g_otaLastError, sizeof(g_otaLastError), "Not enough space: %s", Update.errorString());
+        LOG_SYSTEM_ERROR("OTA begin failed: %s", g_otaLastError);
         lcdText("OTA Failed!", 1);
         lcdText("No Space", 2);
         http.end();
@@ -151,7 +156,7 @@ OTAResult otaUpdateFromURL(const String& url, bool useHTTPS) {
     http.end();
     
     if (!result) {
-        LOG_SYSTEM_ERROR("OTA firmware download failed: %s", g_otaLastError.c_str());
+        LOG_SYSTEM_ERROR("OTA firmware download failed: %s", g_otaLastError);
         Update.abort();
         lcdText("OTA Failed!", 1);
         lcdText("Download Error", 2);
@@ -170,14 +175,14 @@ OTAResult otaUpdateFromURL(const String& url, bool useHTTPS) {
         g_otaCurrentStatus = OTA_COMPLETED_SUCCESS;
         g_otaCurrentResult = OTA_SUCCESS;
         WAIT_MS(2000);
-        ESP.restart();
+        esp_restart();
         return OTA_SUCCESS;
     } else {
-        g_otaLastError = Update.getError() + ": " + String(Update.errorString());
-        LOG_SYSTEM_ERROR("OTA Update failed: %s", g_otaLastError.c_str());
+        snprintf(g_otaLastError, sizeof(g_otaLastError), "%d: %s", Update.getError(), Update.errorString());
+        LOG_SYSTEM_ERROR("OTA Update failed: %s", g_otaLastError);
         Update.abort();
         lcdText("OTA Failed!", 1);
-        lcdText(g_otaLastError.substring(0, 16), 2);
+        lcdText(g_otaLastError, 2);  // lcdText handles up to 16 chars
         updateColor(CRGB::Red);
         g_otaCurrentStatus = OTA_COMPLETED_FAILED;
         g_otaCurrentResult = OTA_FAIL_WRITE;
@@ -188,7 +193,7 @@ OTAResult otaUpdateFromURL(const String& url, bool useHTTPS) {
 OTAResult otaUpdateFromFile(uint8_t* data, size_t length) {
     (void)data;
     (void)length;
-    g_otaLastError = "OTA from file not implemented";
+    strlcpy(g_otaLastError, "OTA from file not implemented", sizeof(g_otaLastError));
     g_otaCurrentStatus = OTA_COMPLETED_FAILED;
     g_otaCurrentResult = OTA_FAIL_WRITE;
     return OTA_FAIL_WRITE;
@@ -199,7 +204,7 @@ int otaGetProgress() {
     return g_otaProgress;
 }
 
-String otaGetErrorString() {
+const char* otaGetErrorString() {
     return g_otaLastError;
 }
 
@@ -211,7 +216,7 @@ bool otaIsInProgress() {
     return g_otaCurrentStatus == OTA_RUNNING;
 }
 
-void otaCheckForUpdate(const String& versionCheckURL) {
+void otaCheckForUpdate(const char* versionCheckURL) {
     // 可选: 实现版本检查逻辑
     // 从服务器获取最新版本号并比较
     (void)versionCheckURL;

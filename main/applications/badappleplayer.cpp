@@ -1,13 +1,14 @@
 #include "./applications/badappleplayer.h"
 #include "hardware/buzzer.h"
 #include <cstring>
+#include <sys/stat.h>
 
 static const uint8_t BADAPPLE_BUZZER_VOLUME = 35;
 static const int64_t kBadAppleFrameDurationUs = 33333;
 
 struct BadAppleRuntimeState {
     bool active = false;
-    File file;
+    FILE* file = nullptr;
     int totalFrames = 0;
     int currentFrame = 0;
     int melodyIndex = 0;
@@ -24,7 +25,7 @@ static BadAppleRuntimeState s_badapple;
 
 static void _resetBadAppleRuntimeState() {
     s_badapple.active = false;
-    s_badapple.file = File();
+    s_badapple.file = nullptr;
     s_badapple.totalFrames = 0;
     s_badapple.currentFrame = 0;
     s_badapple.melodyIndex = 0;
@@ -39,7 +40,8 @@ static void _resetBadAppleRuntimeState() {
 
 static void _stopBadApplePlayback(bool completed) {
     if (s_badapple.file) {
-        s_badapple.file.close();
+        fclose(s_badapple.file);
+        s_badapple.file = nullptr;
     }
     buzzerNoTone();
     const int64_t endTime = esp_timer_get_time();
@@ -132,8 +134,10 @@ void enterBadAppleInterface() {
     // 统一应用入口：非联网、非阻塞状态机。
     enterAppInterface(handleBadAppleInterface, false);
 
-    if (!SPIFFS.exists("/badapple.bin")) {
-        LOG_SYSTEM_WARN("Bad Apple file not found: /badapple.bin");
+    // 检查文件是否存在
+    struct stat st;
+    if (stat("/spiffs/badapple.bin", &st) != 0) {
+        LOG_SYSTEM_WARN("Bad Apple file not found: /spiffs/badapple.bin");
         lcdText("File Not Found", 1);
         lcdText(" ", 2);
         exitAppInterface(FIRST_TIME_DELAY);
@@ -141,16 +145,16 @@ void enterBadAppleInterface() {
     }
 
     _resetBadAppleRuntimeState();
-    s_badapple.file = SPIFFS.open("/badapple.bin", "r");
+    s_badapple.file = fopen("/spiffs/badapple.bin", "r");
     if (!s_badapple.file) {
-        LOG_SYSTEM_WARN("Failed to open Bad Apple file: /badapple.bin");
+        LOG_SYSTEM_WARN("Failed to open Bad Apple file: /spiffs/badapple.bin");
         lcdText("Err Open File", 1);
         lcdText(" ", 2);
         exitAppInterface(FIRST_TIME_DELAY);
         return;
     }
 
-    s_badapple.totalFrames = static_cast<int>(s_badapple.file.size() / 64);
+    s_badapple.totalFrames = static_cast<int>(st.st_size / 64);
     for (int i = 1; i < badAppleMelodyLength; ++i) {
         s_badapple.melodyCumulativeMs[i] = s_badapple.melodyCumulativeMs[i - 1]
             + pgm_read_word(&badAppleMelodyDurations[i - 1]);
@@ -209,7 +213,7 @@ void handleBadAppleInterface() {
 
     if (seeked) {
         s_badapple.currentFrame = seekFrame;
-        s_badapple.file.seek(static_cast<size_t>(s_badapple.currentFrame) * 64, SeekSet);
+        fseek(s_badapple.file, static_cast<size_t>(s_badapple.currentFrame) * 64, SEEK_SET);
         s_badapple.nextFrameTime = now;
 
         uint32_t targetMs = s_badapple.frameTimestampMs[s_badapple.currentFrame];
@@ -230,10 +234,17 @@ void handleBadAppleInterface() {
 
     if (now >= s_badapple.nextFrameTime) {
         const size_t frameSize = 64;
-        if (s_badapple.file.available() >= static_cast<int>(frameSize)
+        // 检查是否还有足够的数据可读
+        long currentPos = ftell(s_badapple.file);
+        fseek(s_badapple.file, 0, SEEK_END);
+        long fileSize = ftell(s_badapple.file);
+        fseek(s_badapple.file, currentPos, SEEK_SET);
+        long remaining = fileSize - currentPos;
+
+        if (remaining >= static_cast<long>(frameSize)
             && s_badapple.melodyIndex < badAppleMelodyLength) {
             uint8_t frame[frameSize];
-            s_badapple.file.read(frame, frameSize);
+            fread(frame, 1, frameSize, s_badapple.file);
             _processBadapple(frame, s_badapple.currentFrame);
             s_badapple.currentFrame++;
             s_badapple.nextFrameTime += kBadAppleFrameDurationUs;

@@ -1,7 +1,19 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#include <Arduino.h>
+// ==============================
+// ESP-IDF 原生头文件（替代 Arduino.h）
+// ==============================
+#include <stdint.h>
+#include <stdbool.h>
+#include <cstdarg>
+#include <cstring>
+#include <cstdio>
+
+// ESP-IDF 日志系统
+#include "esp_log.h"
+
+// FreeRTOS
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
@@ -82,12 +94,7 @@ public:
      * @brief 输出日志
      */
     static void log(LogModule module, LogLevel level, const char* format, ...);
-    
-    /**
-     * @brief 输出日志（String版本）
-     */
-    static void log(LogModule module, LogLevel level, const String& message);
-    
+
     /**
      * @brief 获取当前可用堆内存（用于内存监控日志）
      */

@@ -1,7 +1,7 @@
 #ifndef AUTO_BRIGHTNESS_H
 #define AUTO_BRIGHTNESS_H
 
-#include <Arduino.h>
+#include <cstdint>
 #include "./hardware/opt3001.h"
 #include "./hardware/lcd_driver.h"
 #include "./utils/logger.h"

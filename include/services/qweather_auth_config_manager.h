@@ -34,12 +34,12 @@ public:
         ConfigFileError
     };
 private:
-    String apiHost;     ///< API主机地址
-    String kId;         ///< 和风天气Key ID
-    String projectID;   ///< 项目ID
-    String base64Key;   ///< Base64编码的密钥
-    String location;    ///< 位置坐标(地点ID)
-    String cityName;    ///< 城市名称
+    char apiHost[64];     ///< API主机地址
+    char kId[33];         ///< 和风天气Key ID
+    char projectID[33];   ///< 项目ID
+    char base64Key[129];  ///< Base64编码的密钥
+    char location[33];    ///< 位置坐标(地点ID)
+    char cityName[33];    ///< 城市名称
 
     QWeatherError lastQWeatherError;  ///< 最后一次和风天气错误类型
 
@@ -54,8 +54,8 @@ public:
      * @brief 构造函数
      * @param configFilePath 和风天气配置文件的完整路径
      */
-    QWeatherAuthConfigManager(const String& configFilePath);
-    
+    QWeatherAuthConfigManager(const char* configFilePath);
+
     /**
      * @brief 析构函数
      */
@@ -63,39 +63,39 @@ public:
 
     /**
      * @brief 获取API主机地址
-     * @return String API主机地址
+     * @return const char* API主机地址
      */
-    String getApiHost();
-    
+    const char* getApiHost();
+
     /**
      * @brief 获取Key ID
-     * @return String 和风天气Key ID
+     * @return const char* 和风天气Key ID
      */
-    String getKId();
-    
+    const char* getKId();
+
     /**
      * @brief 获取项目ID
-     * @return String 项目ID
+     * @return const char* 项目ID
      */
-    String getProjectID();
-    
+    const char* getProjectID();
+
     /**
      * @brief 获取Base64密钥
-     * @return String Base64编码的密钥
+     * @return const char* Base64编码的密钥
      */
-    String getBase64Key();
-    
+    const char* getBase64Key();
+
     /**
      * @brief 获取位置坐标
-     * @return String 位置坐标(经纬度格式)
+     * @return const char* 位置坐标(经纬度格式)
      */
-    String getLocation();
-    
+    const char* getLocation();
+
     /**
      * @brief 获取城市名称
-     * @return String 城市名称
+     * @return const char* 城市名称
      */
-    String getCityName();
+    const char* getCityName();
 
     /**
      * @brief 设置认证信息
@@ -105,15 +105,15 @@ public:
      * @param base64Key Base64编码的密钥
      * @return true 设置成功，false 设置失败
      */
-    bool setAuth(String apiHost, String kId, String projectID, String base64Key);
-    
+    bool setAuth(const char* apiHost, const char* kId, const char* projectID, const char* base64Key);
+
     /**
      * @brief 设置位置信息
      * @param location 位置坐标(经纬度)
      * @param cityName 城市名称
      * @return true 设置成功，false 设置失败
      */
-    bool setLocation(String location, String cityName);
+    bool setLocation(const char* location, const char* cityName);
 
     /**
      * @brief 初始化和风天气配置管理器
@@ -152,9 +152,9 @@ public:
     /**
      * @brief 获取和风天气错误类型的字符串描述
      * @param error 错误类型
-     * @return String 错误描述字符串
+     * @return const char* 错误描述字符串
      */
-    String getLastQWeatherErrorString();
+    const char* getLastQWeatherErrorString();
 };
 
 #endif  // QWEATHER_AUTH_CONFIG_MANAGER_H

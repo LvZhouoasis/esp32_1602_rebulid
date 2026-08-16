@@ -28,18 +28,18 @@ namespace SystemIcons {
 
     uint8_t unknowIcon[] = {0x0E, 0x11, 0x01, 0x02, 0x04, 0x00, 0x04, 0x00}; // 未知图标
 
-    uint8_t* getIcon(const String& iconName) {
-        if (iconName == "wifi") return wifiIcon;
-        if (iconName == "wifi_off") return wifiOffIcon;
-        if (iconName == "bluetooth") return bluetoothIcon;
-        if (iconName == "clock") return clockIcon;
-        if (iconName == "temperature") return tempIcon;
-        if (iconName == "celsius") return celsius;
-        if (iconName == "battery_charging") return batteryChargingIcon;
-        if (iconName == "outdated") return outDatedIcon;
-        if (iconName == "dc_left") return dcIconLeft;
-        if (iconName == "dc_right") return dcIconRight;
-        if (iconName == "unknown") return unknowIcon;
+    uint8_t* getIcon(const char* iconName) {
+        if (strcmp(iconName, "wifi") == 0) return wifiIcon;
+        if (strcmp(iconName, "wifi_off") == 0) return wifiOffIcon;
+        if (strcmp(iconName, "bluetooth") == 0) return bluetoothIcon;
+        if (strcmp(iconName, "clock") == 0) return clockIcon;
+        if (strcmp(iconName, "temperature") == 0) return tempIcon;
+        if (strcmp(iconName, "celsius") == 0) return celsius;
+        if (strcmp(iconName, "battery_charging") == 0) return batteryChargingIcon;
+        if (strcmp(iconName, "outdated") == 0) return outDatedIcon;
+        if (strcmp(iconName, "dc_left") == 0) return dcIconLeft;
+        if (strcmp(iconName, "dc_right") == 0) return dcIconRight;
+        if (strcmp(iconName, "unknown") == 0) return unknowIcon;
 
         return nullptr;
     }
@@ -70,15 +70,15 @@ namespace WindIcons {
     uint8_t southWestWindIcon [] = {0x00, 0x0F, 0x03, 0x05, 0x09, 0x10, 0x00, 0x00};
     uint8_t northWestWindIcon [] = {0x00, 0x10, 0x09, 0x05, 0x03, 0x0F, 0x00, 0x00};
 
-    uint8_t* getIcon(const String& direction) {
-        if (direction == "N" || direction == "北风") return northWindIcon;
-        if (direction == "S" || direction == "南风") return southWindIcon;
-        if (direction == "E" || direction == "东风") return eastWindIcon;
-        if (direction == "W" || direction == "西风") return westWindIcon;
-        if (direction == "NE" || direction == "东北风") return northEastWindIcon;
-        if (direction == "SE" || direction == "东南风") return southEastWindIcon;
-        if (direction == "SW" || direction == "西北风") return southWestWindIcon;
-        if (direction == "NW" || direction == "西南风") return northWestWindIcon;
+    uint8_t* getIcon(const char* direction) {
+        if (strcmp(direction, "N") == 0 || strcmp(direction, "北风") == 0) return northWindIcon;
+        if (strcmp(direction, "S") == 0 || strcmp(direction, "南风") == 0) return southWindIcon;
+        if (strcmp(direction, "E") == 0 || strcmp(direction, "东风") == 0) return eastWindIcon;
+        if (strcmp(direction, "W") == 0 || strcmp(direction, "西风") == 0) return westWindIcon;
+        if (strcmp(direction, "NE") == 0 || strcmp(direction, "东北风") == 0) return northEastWindIcon;
+        if (strcmp(direction, "SE") == 0 || strcmp(direction, "东南风") == 0) return southEastWindIcon;
+        if (strcmp(direction, "SW") == 0 || strcmp(direction, "西南风") == 0) return southWestWindIcon;
+        if (strcmp(direction, "NW") == 0 || strcmp(direction, "西北风") == 0) return northWestWindIcon;
         return SystemIcons::unknowIcon;
     }
 }
@@ -130,71 +130,71 @@ namespace WeatherIcons {
     uint8_t dustStormRightIcon[] = {0x00, 0x04, 0x02, 0x1F, 0x02, 0x04, 0x00, 0x00};
 
 
-    uint8_t* getLeftIcon(const String& weather) {
+    uint8_t* getLeftIcon(const char* weather) {
         // 中文
-        if (weather == "晴") return sunnyLeftIcon;
-        if (weather == "多云") return cloudyLeftIcon;
-        if (weather == "阴") return overcastLeftIcon;
-        if (weather == "小雨") return lightRainLeftIcon;
-        if (weather == "中雨") return moderateRainLeftIcon;
-        if (weather == "大雨") return heavyRainLeftIcon;
-        if (weather == "暴雨") return stormLeftIcon;
-        if (weather == "雾") return fogLeftIcon;
-        if (weather == "雪") return snowLeftIcon;
-        if (weather == "雷阵雨") return thunderLeftIcon;
-        if (weather == "沙尘暴") return dustStormLeftIcon;
-        
+        if (strcmp(weather, "晴") == 0) return sunnyLeftIcon;
+        if (strcmp(weather, "多云") == 0) return cloudyLeftIcon;
+        if (strcmp(weather, "阴") == 0) return overcastLeftIcon;
+        if (strcmp(weather, "小雨") == 0) return lightRainLeftIcon;
+        if (strcmp(weather, "中雨") == 0) return moderateRainLeftIcon;
+        if (strcmp(weather, "大雨") == 0) return heavyRainLeftIcon;
+        if (strcmp(weather, "暴雨") == 0) return stormLeftIcon;
+        if (strcmp(weather, "雾") == 0) return fogLeftIcon;
+        if (strcmp(weather, "雪") == 0) return snowLeftIcon;
+        if (strcmp(weather, "雷阵雨") == 0) return thunderLeftIcon;
+        if (strcmp(weather, "沙尘暴") == 0) return dustStormLeftIcon;
+
         // 日语
-        if (weather == "晴れ") return sunnyLeftIcon;
-        if (weather == "曇り") return cloudyLeftIcon;
-        if (weather == "驟雨") return lightRainLeftIcon;
-        if (weather == "雷雨") return thunderLeftIcon;
-        if (weather == "霧") return fogLeftIcon;
-        
+        if (strcmp(weather, "晴れ") == 0) return sunnyLeftIcon;
+        if (strcmp(weather, "曇り") == 0) return cloudyLeftIcon;
+        if (strcmp(weather, "驟雨") == 0) return lightRainLeftIcon;
+        if (strcmp(weather, "雷雨") == 0) return thunderLeftIcon;
+        if (strcmp(weather, "霧") == 0) return fogLeftIcon;
+
         // 英文
-        if (weather == "Sunny" || weather == "Clear") return sunnyLeftIcon;
-        if (weather == "Cloudy" || weather == "Partly Cloudy") return cloudyLeftIcon;
-        if (weather == "Overcast") return overcastLeftIcon;
-        if (weather == "Rain" || weather == "Light Rain") return lightRainLeftIcon;
-        if (weather == "Heavy Rain") return heavyRainLeftIcon;
-        if (weather == "Snow") return snowLeftIcon;
-        if (weather == "Thunderstorm") return thunderLeftIcon;
-        if (weather == "Fog") return fogLeftIcon;
-        
+        if (strcmp(weather, "Sunny") == 0 || strcmp(weather, "Clear") == 0) return sunnyLeftIcon;
+        if (strcmp(weather, "Cloudy") == 0 || strcmp(weather, "Partly Cloudy") == 0) return cloudyLeftIcon;
+        if (strcmp(weather, "Overcast") == 0) return overcastLeftIcon;
+        if (strcmp(weather, "Rain") == 0 || strcmp(weather, "Light Rain") == 0) return lightRainLeftIcon;
+        if (strcmp(weather, "Heavy Rain") == 0) return heavyRainLeftIcon;
+        if (strcmp(weather, "Snow") == 0) return snowLeftIcon;
+        if (strcmp(weather, "Thunderstorm") == 0) return thunderLeftIcon;
+        if (strcmp(weather, "Fog") == 0) return fogLeftIcon;
+
         return sunnyLeftIcon;
     }
 
-    uint8_t* getRightIcon(const String& weather) {
+    uint8_t* getRightIcon(const char* weather) {
         // 中文
-        if (weather == "晴") return sunnyRightIcon;
-        if (weather == "多云") return cloudyRightIcon;
-        if (weather == "阴") return overcastRightIcon;
-        if (weather == "小雨") return lightRainRightIcon;
-        if (weather == "中雨") return moderateRainRightIcon;
-        if (weather == "大雨") return heavyRainRightIcon;
-        if (weather == "暴雨") return stormRightIcon;
-        if (weather == "雾") return fogRightIcon;
-        if (weather == "雪") return snowRightIcon;
-        if (weather == "雷阵雨") return thunderRightIcon;
-        if (weather == "沙尘暴") return dustStormRightIcon;
-        
+        if (strcmp(weather, "晴") == 0) return sunnyRightIcon;
+        if (strcmp(weather, "多云") == 0) return cloudyRightIcon;
+        if (strcmp(weather, "阴") == 0) return overcastRightIcon;
+        if (strcmp(weather, "小雨") == 0) return lightRainRightIcon;
+        if (strcmp(weather, "中雨") == 0) return moderateRainRightIcon;
+        if (strcmp(weather, "大雨") == 0) return heavyRainRightIcon;
+        if (strcmp(weather, "暴雨") == 0) return stormRightIcon;
+        if (strcmp(weather, "雾") == 0) return fogRightIcon;
+        if (strcmp(weather, "雪") == 0) return snowRightIcon;
+        if (strcmp(weather, "雷阵雨") == 0) return thunderRightIcon;
+        if (strcmp(weather, "沙尘暴") == 0) return dustStormRightIcon;
+
         // 日语
-        if (weather == "晴れ") return sunnyRightIcon;
-        if (weather == "曇り") return cloudyRightIcon;
-        if (weather == "驟雨") return lightRainRightIcon;
-        if (weather == "雷雨") return thunderRightIcon;
-        if (weather == "霧") return fogRightIcon;
-        
+        if (strcmp(weather, "晴れ") == 0) return sunnyRightIcon;
+        if (strcmp(weather, "曇り") == 0) return cloudyRightIcon;
+        if (strcmp(weather, "驟雨") == 0) return lightRainRightIcon;
+        if (strcmp(weather, "雷雨") == 0) return thunderRightIcon;
+        if (strcmp(weather, "霧") == 0) return fogRightIcon;
+
         // 英文
-        if (weather == "Sunny" || weather == "Clear") return sunnyRightIcon;
-        if (weather == "Cloudy" || weather == "Partly Cloudy") return cloudyRightIcon;
-        if (weather == "Overcast") return overcastRightIcon;
-        if (weather == "Rain" || weather == "Light Rain") return lightRainRightIcon;
-        if (weather == "Heavy Rain") return heavyRainRightIcon;
-        if (weather == "Snow") return snowRightIcon;
-        if (weather == "Thunderstorm") return thunderRightIcon;
-        if (weather == "Fog") return fogRightIcon;
-        
+        if (strcmp(weather, "Sunny") == 0 || strcmp(weather, "Clear") == 0) return sunnyRightIcon;
+        if (strcmp(weather, "Cloudy") == 0 || strcmp(weather, "Partly Cloudy") == 0) return cloudyRightIcon;
+        if (strcmp(weather, "Overcast") == 0) return overcastRightIcon;
+        if (strcmp(weather, "Rain") == 0 || strcmp(weather, "Light Rain") == 0) return lightRainRightIcon;
+        if (strcmp(weather, "Heavy Rain") == 0) return heavyRainRightIcon;
+        if (strcmp(weather, "Snow") == 0) return snowRightIcon;
+        if (strcmp(weather, "Thunderstorm") == 0) return thunderRightIcon;
+        if (strcmp(weather, "Fog") == 0) return fogRightIcon;
+
         return sunnyRightIcon;
     }
 }

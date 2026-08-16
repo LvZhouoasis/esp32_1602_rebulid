@@ -46,7 +46,8 @@ static void _aboutHandleNavigation(int totalPages) {
 void enterBuildInfoInterface() {
     enterAppInterface(handleBuildInfoInterface, false);
     globalButtonDelay(FIRST_TIME_DELAY);
-    String ver = String(PROJECT_VERSION) + "  " + String(BUILD_VERSION);
+    char ver[32];
+    snprintf(ver, sizeof(ver), "%s  %s", PROJECT_VERSION, BUILD_VERSION);
     lcdText(ver, 1);
     lcdText(BUILD_TIMESTAMP, 2);
 }

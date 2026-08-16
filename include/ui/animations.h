@@ -1,7 +1,7 @@
 #ifndef ANIMATIONS_H
 #define ANIMATIONS_H
 
-#include <Arduino.h>
+#include <cstdint>
 
 struct IconAnimation {
     const char* name;
