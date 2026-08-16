@@ -21,11 +21,19 @@
 #define HTTP_PUT    2
 #define HTTP_DELETE 3
 
+// 上传状态定义（兼容Arduino WebServer）
+#define UPLOAD_FILE_START  0
+#define UPLOAD_FILE_WRITE  1
+#define UPLOAD_FILE_END    2
+
 // 最大路由数量
 #define MAX_ROUTES 32
 
 // 最大查询参数数量
 #define MAX_ARGS 16
+
+// 上传缓冲区大小
+#define UPLOAD_BUF_SIZE 4096
 
 /**
  * @brief 查询参数结构
@@ -33,6 +41,18 @@
 struct HttpArg {
     char key[64];
     char value[256];
+};
+
+/**
+ * @brief 文件上传状态结构（兼容Arduino WebServer的HTTPUpload）
+ */
+struct HTTPUpload {
+    const char* filename;      // 文件名
+    const char* contentType;   // 内容类型
+    const uint8_t* buf;        // 数据缓冲区
+    size_t currentSize;        // 当前块大小
+    size_t totalSize;          // 总已上传大小
+    int status;                // UPLOAD_FILE_START, UPLOAD_FILE_WRITE, UPLOAD_FILE_END
 };
 
 /**
@@ -44,6 +64,8 @@ struct HttpContext {
     HttpArg args[MAX_ARGS];
     int argCount;
     int method;
+    HTTPUpload upload;         // 上传状态
+    bool isUpload;             // 是否是上传请求
 };
 
 /**
@@ -65,14 +87,30 @@ private:
     int _routeCount;
     std::function<void()> _notFoundHandler;
 
+    // 上传处理
+    struct UploadRoute {
+        char uri[128];
+        std::function<void()> handler;
+    };
+
+    UploadRoute _uploadRoutes[MAX_ROUTES];
+    int _uploadRouteCount;
+
     // 当前请求上下文（用于在handler中访问请求信息）
     static HttpContext _currentContext;
 
     // 静态handler包装器
     static esp_err_t _handleRequest(httpd_req_t* req);
+    static esp_err_t _handleUpload(httpd_req_t* req);
 
     // 解析查询字符串
     static void _parseQueryString(const char* query, HttpContext& ctx);
+
+    // 解析multipart边界
+    static int _parseMultipartBoundary(const char* contentType, char* boundary, size_t boundaryLen);
+
+    // 处理multipart数据
+    static void _processMultipartData(const uint8_t* data, size_t len, const char* boundary);
 
 public:
     /**
@@ -100,6 +138,13 @@ public:
      * @param handler 处理函数
      */
     void on(const char* uri, int method, std::function<void()> handler);
+
+    /**
+     * @brief 注册文件上传处理函数
+     * @param uri URI路径
+     * @param handler 处理函数（在handler中调用upload()获取上传状态）
+     */
+    void onUpload(const char* uri, std::function<void()> handler);
 
     /**
      * @brief 注册404处理函数
@@ -202,6 +247,12 @@ public:
      * @return true 存在，false 不存在
      */
     bool hasHeader(const char* name);
+
+    /**
+     * @brief 获取当前上传状态（兼容Arduino WebServer）
+     * @return HTTPUpload引用
+     */
+    HTTPUpload& upload();
 };
 
 #endif // HTTP_SERVER_WRAPPER_H

@@ -252,55 +252,45 @@ void webSettingHandleOTAProgress() {
 
 // OTA文件上传处理
 void webSettingHandleOTAUpload() {
-    if(settingServer.method() != HTTP_POST) {
-        settingServer.send(405, "application/json; charset=utf-8", "{\"error\":\"请使用 POST 方法上传固件\"}");
-        LOG_WEB_WARN("Received non-POST request for OTA upload");
-        return;
-    }
-
     HTTPUpload& upload = settingServer.upload();
 
-    // 只处理三种合法状态，如果没有文件那么 HTTP400 Bad Request
-    if (upload.status != UPLOAD_FILE_START && upload.status != UPLOAD_FILE_WRITE && upload.status != UPLOAD_FILE_END) {
-        LOG_WEB_WARN("OTA upload: unexpected upload.status=%d", upload.status);
-        settingServer.send(400, "application/json; charset=utf-8", "{\"error\":\"无效的上传状态\"}");
-        return;
-    }
-    
     // 请求上传阶段
     if (upload.status == UPLOAD_FILE_START){
         // 有文件名 => 确认是文件上传
-        if (upload.filename && upload.filename.length() > 0) {
-            LOG_SYSTEM_INFO("OTA Upload Start: %s", upload.filename.c_str());
+        if (upload.filename && strlen(upload.filename) > 0) {
+            LOG_SYSTEM_INFO("OTA Upload Start: %s", upload.filename);
             lcdText("Uploading...", 1);
-            lcdText(upload.filename.c_str(), 2);
+            lcdText(upload.filename, 2);
             updateColor(CRGB::Orange);
             otaExpectedSize = 0;  // 重置预期大小
-            
+
             // http上传无法提前获取文件大小，使用未知大小模式
             if (!webOtaUpdate.begin()) {
                 LOG_SYSTEM_ERROR("OTA begin failed");
                 lcdText("OTA Begin Fail", 1);
                 lcdText("", 2);
-                char errBuf[128];
-                snprintf(errBuf, sizeof(errBuf), "{\"success\":false,\"error\":\"%s\"}", webOtaUpdate.errorString());
-                settingServer.send(500, "application/json", errBuf);
+                otaUploadSuccess = false;
                 return;
             }
+            otaUploadSuccess = true;  // 标记上传开始成功
+        } else {
+            LOG_WEB_WARN("OTA upload: no filename");
+            otaUploadSuccess = false;
         }
     }
 
     // 分片上传阶段
     else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (!otaUploadSuccess) return;  // 之前已经失败
+
         // 如果写入字节不匹配
         size_t written = webOtaUpdate.write(upload.buf, upload.currentSize);
         if (written != upload.currentSize) {
             LOG_SYSTEM_ERROR("OTA write failed");
             webOtaUpdate.abort();  // abort 回滚
-            settingServer.send(500, "application/json",
-                "{\"success\":false,\"error\":\"写入失败\"}");
             lcdText("OTA Write Fail", 1);
             lcdText("", 2);
+            otaUploadSuccess = false;
             return;
         }
 
@@ -318,12 +308,15 @@ void webSettingHandleOTAUpload() {
     else if (upload.status == UPLOAD_FILE_END) {
         LOG_SYSTEM_INFO("OTA Upload End: %u bytes (%.2f KB)", upload.totalSize, upload.totalSize / 1024.0);
         otaExpectedSize = upload.totalSize;  // 保存最终大小
-        if (webOtaUpdate.end(false)) {
+
+        if (otaUploadSuccess && webOtaUpdate.end(false)) {
             LOG_SYSTEM_INFO("OTA Success! Firmware size: %u", upload.totalSize);
             lcdText("OTA Success!", 1);
             lcdText("Rebooting...", 2);
             updateColor(CRGB::Green);
-            otaUploadSuccess = true;  // 标记上传成功
+
+            // 发送成功响应
+            settingServer.send(200, "application/json", "{\"success\":true}");
 
             // 创建后台重启任务，等待结束响应发送完成
             xTaskCreate([](void*){
@@ -334,7 +327,11 @@ void webSettingHandleOTAUpload() {
         else {  // 如果结束时出错
             LOG_SYSTEM_ERROR("OTA End failed: %s", webOtaUpdate.errorString());
             otaUploadSuccess = false;
-            return;
+
+            // 发送失败响应
+            char errBuf[128];
+            snprintf(errBuf, sizeof(errBuf), "{\"success\":false,\"error\":\"%s\"}", webOtaUpdate.errorString());
+            settingServer.send(500, "application/json", errBuf);
         }
     }
 }
@@ -745,21 +742,7 @@ void webSettingSetupWebServer() {
     settingServer.on("/ota", webSettingHandleOTA);                         // OTA页面
     settingServer.on("/ota/url", webSettingHandleOTAURL);                  // OTA URL处理
     settingServer.on("/ota/progress", webSettingHandleOTAProgress);        // OTA进度查询
-    settingServer.on("/ota/upload", HTTP_POST,
-        []() {
-            // 处理完成后的回调
-            if (otaUploadSuccess) {
-                settingServer.send(200, "application/json", "{\"success\":true}");
-            } else {
-                char errBuf[128];
-                snprintf(errBuf, sizeof(errBuf), "{\"success\":false,\"error\":\"%s\"}",
-                    webOtaUpdate.isRunning() ? webOtaUpdate.errorString() : "上传失败");
-                settingServer.send(500, "application/json", errBuf);
-            }
-            otaUploadSuccess = false;  // 重置标志
-        },
-        webSettingHandleOTAUpload  // 上传处理函数
-    );
+    settingServer.onUpload("/ota/upload", webSettingHandleOTAUpload);  // OTA文件上传
 
     // 城市搜索相关路由
     settingServer.on("/citysearch", webSettingHandleCitySearch);    // 城市搜索界面

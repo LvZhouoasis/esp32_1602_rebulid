@@ -14,8 +14,11 @@ HttpContext HttpServer::_currentContext = {};
 
 // 构造函数
 HttpServer::HttpServer(int port)
-    : _server(nullptr), _port(port), _routeCount(0), _notFoundHandler(nullptr) {
+    : _server(nullptr), _port(port), _routeCount(0), _uploadRouteCount(0), _notFoundHandler(nullptr) {
     memset(_routes, 0, sizeof(_routes));
+    memset(_uploadRoutes, 0, sizeof(_uploadRoutes));
+    memset(&_currentContext.upload, 0, sizeof(_currentContext.upload));
+    _currentContext.isUpload = false;
 }
 
 // 析构函数
@@ -132,6 +135,271 @@ void HttpServer::onNotFound(std::function<void()> handler) {
     _notFoundHandler = handler;
 }
 
+// 注册文件上传处理函数
+void HttpServer::onUpload(const char* uri, std::function<void()> handler) {
+    if (_uploadRouteCount >= MAX_ROUTES) {
+        ESP_LOGE(TAG, "Maximum upload routes reached");
+        return;
+    }
+
+    strlcpy(_uploadRoutes[_uploadRouteCount].uri, uri, sizeof(_uploadRoutes[_uploadRouteCount].uri));
+    _uploadRoutes[_uploadRouteCount].handler = handler;
+    _uploadRouteCount++;
+}
+
+// 上传处理handler
+esp_err_t HttpServer::_handleUpload(httpd_req_t* req) {
+    HttpServer* server = (HttpServer*)req->user_ctx;
+    if (!server) return ESP_FAIL;
+
+    // 查找匹配的上传路由
+    for (int i = 0; i < server->_uploadRouteCount; i++) {
+        if (strcmp(server->_uploadRoutes[i].uri, req->uri) == 0) {
+            // 设置当前请求上下文
+            _currentContext.req = req;
+            _currentContext.method = HTTP_POST;
+            _currentContext.isUpload = true;
+
+            // 获取Content-Type并解析boundary
+            char contentType[256] = {0};
+            size_t contentTypeLen = httpd_req_get_hdr_value_str(req, "Content-Type", contentType, sizeof(contentType));
+            if (contentTypeLen == 0) {
+                ESP_LOGE(TAG, "Missing Content-Type header");
+                httpd_resp_set_status(req, "400 Bad Request");
+                httpd_resp_send(req, "Missing Content-Type", 19);
+                return ESP_FAIL;
+            }
+
+            // 解析boundary
+            char boundary[128] = {0};
+            if (_parseMultipartBoundary(contentType, boundary, sizeof(boundary)) != 0) {
+                ESP_LOGE(TAG, "Failed to parse boundary from Content-Type: %s", contentType);
+                httpd_resp_set_status(req, "400 Bad Request");
+                httpd_resp_send(req, "Invalid Content-Type", 20);
+                return ESP_FAIL;
+            }
+
+            // 读取并处理整个请求体
+            size_t totalReceived = 0;
+            uint8_t* buffer = (uint8_t*)malloc(UPLOAD_BUF_SIZE);
+            if (!buffer) {
+                ESP_LOGE(TAG, "Failed to allocate upload buffer");
+                httpd_resp_set_status(req, "500 Internal Server Error");
+                httpd_resp_send(req, "Memory allocation failed", 24);
+                return ESP_FAIL;
+            }
+
+            // 累积缓冲区用于边界检测
+            uint8_t* accumBuffer = (uint8_t*)malloc(UPLOAD_BUF_SIZE * 2);
+            size_t accumLen = 0;
+            if (!accumBuffer) {
+                free(buffer);
+                ESP_LOGE(TAG, "Failed to allocate accum buffer");
+                httpd_resp_set_status(req, "500 Internal Server Error");
+                httpd_resp_send(req, "Memory allocation failed", 24);
+                return ESP_FAIL;
+            }
+
+            // 初始化上传状态
+            _currentContext.upload.filename = "";
+            _currentContext.upload.contentType = "";
+            _currentContext.upload.buf = nullptr;
+            _currentContext.upload.currentSize = 0;
+            _currentContext.upload.totalSize = 0;
+            _currentContext.upload.status = UPLOAD_FILE_START;
+
+            bool inBody = false;
+            bool headerParsed = false;
+            size_t headerEndPos = 0;
+
+            // 触发 FILE_START 回调
+            server->_uploadRoutes[i].handler();
+
+            while (true) {
+                int received = httpd_req_recv(req, (char*)buffer, UPLOAD_BUF_SIZE);
+                if (received <= 0) {
+                    if (received == HTTPD_SOCK_ERR_TIMEOUT) {
+                        continue;  // 超时重试
+                    }
+                    break;  // 错误或连接关闭
+                }
+
+                totalReceived += received;
+
+                // 将新数据追加到累积缓冲区
+                if (accumLen + received > UPLOAD_BUF_SIZE * 2) {
+                    // 处理累积缓冲区中的数据
+                    if (inBody && headerParsed) {
+                        _currentContext.upload.buf = accumBuffer;
+                        _currentContext.upload.currentSize = accumLen;
+                        _currentContext.upload.totalSize += accumLen;
+                        _currentContext.upload.status = UPLOAD_FILE_WRITE;
+                        server->_uploadRoutes[i].handler();
+                    }
+                    accumLen = 0;
+                }
+                memcpy(accumBuffer + accumLen, buffer, received);
+                accumLen += received;
+
+                // 如果还没找到头部结束标记，尝试查找
+                if (!headerParsed) {
+                    // 查找 \r\n\r\n（头部结束）
+                    for (size_t j = 0; j < accumLen - 3; j++) {
+                        if (accumBuffer[j] == '\r' && accumBuffer[j+1] == '\n' &&
+                            accumBuffer[j+2] == '\r' && accumBuffer[j+3] == '\n') {
+                            headerParsed = true;
+                            headerEndPos = j + 4;
+
+                            // 解析头部获取filename
+                            char header[512] = {0};
+                            size_t headerLen = j < sizeof(header) - 1 ? j : sizeof(header) - 1;
+                            memcpy(header, accumBuffer, headerLen);
+
+                            // 查找filename
+                            const char* fnStart = strstr(header, "filename=\"");
+                            if (fnStart) {
+                                fnStart += 10;  // 跳过 filename="
+                                const char* fnEnd = strchr(fnStart, '"');
+                                if (fnEnd) {
+                                    static char filenameBuf[128];
+                                    size_t fnLen = fnEnd - fnStart;
+                                    if (fnLen >= sizeof(filenameBuf)) fnLen = sizeof(filenameBuf) - 1;
+                                    memcpy(filenameBuf, fnStart, fnLen);
+                                    filenameBuf[fnLen] = '\0';
+                                    _currentContext.upload.filename = filenameBuf;
+                                }
+                            }
+
+                            // 查找Content-Type
+                            const char* ctStart = strstr(header, "Content-Type: ");
+                            if (ctStart) {
+                                ctStart += 14;
+                                const char* ctEnd = strstr(ctStart, "\r\n");
+                                if (ctEnd) {
+                                    static char ctBuf[128];
+                                    size_t ctLen = ctEnd - ctStart;
+                                    if (ctLen >= sizeof(ctBuf)) ctLen = sizeof(ctBuf) - 1;
+                                    memcpy(ctBuf, ctStart, ctLen);
+                                    ctBuf[ctLen] = '\0';
+                                    _currentContext.upload.contentType = ctBuf;
+                                }
+                            }
+
+                            // 移动body数据到缓冲区开头
+                            size_t bodyLen = accumLen - headerEndPos;
+                            memmove(accumBuffer, accumBuffer + headerEndPos, bodyLen);
+                            accumLen = bodyLen;
+                            inBody = true;
+                            break;
+                        }
+                    }
+                }
+
+                // 如果在body中，处理数据
+                if (inBody && headerParsed && accumLen > 0) {
+                    // 检查是否包含boundary结束标记
+                    char endBoundary[128];
+                    snprintf(endBoundary, sizeof(endBoundary), "\r\n--%s--", boundary);
+                    size_t endBoundaryLen = strlen(endBoundary);
+
+                    // 查找结束boundary
+                    bool foundEnd = false;
+                    for (size_t j = 0; j < accumLen; j++) {
+                        if (j + endBoundaryLen <= accumLen &&
+                            memcmp(accumBuffer + j, endBoundary, endBoundaryLen) == 0) {
+                            // 找到结束标记，发送剩余数据
+                            if (j > 0) {
+                                _currentContext.upload.buf = accumBuffer;
+                                _currentContext.upload.currentSize = j;
+                                _currentContext.upload.totalSize += j;
+                                _currentContext.upload.status = UPLOAD_FILE_WRITE;
+                                server->_uploadRoutes[i].handler();
+                            }
+                            foundEnd = true;
+                            break;
+                        }
+                    }
+
+                    if (foundEnd) {
+                        break;  // 上传完成
+                    }
+
+                    // 没有找到结束标记，发送数据（保留可能的boundary前缀）
+                    if (accumLen > 128) {  // 保留一些数据用于boundary检测
+                        size_t sendLen = accumLen - 128;
+                        _currentContext.upload.buf = accumBuffer;
+                        _currentContext.upload.currentSize = sendLen;
+                        _currentContext.upload.totalSize += sendLen;
+                        _currentContext.upload.status = UPLOAD_FILE_WRITE;
+                        server->_uploadRoutes[i].handler();
+
+                        memmove(accumBuffer, accumBuffer + sendLen, accumLen - sendLen);
+                        accumLen -= sendLen;
+                    }
+                }
+            }
+
+            // 触发 FILE_END 回调
+            _currentContext.upload.status = UPLOAD_FILE_END;
+            _currentContext.upload.buf = nullptr;
+            _currentContext.upload.currentSize = 0;
+            server->_uploadRoutes[i].handler();
+
+            free(buffer);
+            free(accumBuffer);
+            return ESP_OK;
+        }
+    }
+
+    // 未找到匹配的上传路由
+    httpd_resp_set_status(req, "404 Not Found");
+    httpd_resp_send(req, "Upload endpoint not found", 25);
+    return ESP_OK;
+}
+
+// 解析multipart boundary
+int HttpServer::_parseMultipartBoundary(const char* contentType, char* boundary, size_t boundaryLen) {
+    const char* boundaryStart = strstr(contentType, "boundary=");
+    if (!boundaryStart) {
+        return -1;
+    }
+    boundaryStart += 9;  // 跳过 "boundary="
+
+    // 处理可能的引号
+    if (*boundaryStart == '"') {
+        boundaryStart++;
+        const char* boundaryEnd = strchr(boundaryStart, '"');
+        if (!boundaryEnd) {
+            return -1;
+        }
+        size_t len = boundaryEnd - boundaryStart;
+        if (len >= boundaryLen) {
+            len = boundaryLen - 1;
+        }
+        memcpy(boundary, boundaryStart, len);
+        boundary[len] = '\0';
+    } else {
+        // 没有引号，取到分号或字符串结尾
+        const char* boundaryEnd = strchr(boundaryStart, ';');
+        if (!boundaryEnd) {
+            boundaryEnd = boundaryStart + strlen(boundaryStart);
+        }
+        size_t len = boundaryEnd - boundaryStart;
+        if (len >= boundaryLen) {
+            len = boundaryLen - 1;
+        }
+        memcpy(boundary, boundaryStart, len);
+        boundary[len] = '\0';
+    }
+
+    return 0;
+}
+
+// 获取上传状态
+HTTPUpload& HttpServer::upload() {
+    return _currentContext.upload;
+}
+
 // 启动服务器
 void HttpServer::begin() {
     if (_server) {
@@ -141,8 +409,9 @@ void HttpServer::begin() {
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = _port;
-    config.max_uri_handlers = _routeCount + 1;  // +1 for not found handler
+    config.max_uri_handlers = _routeCount + _uploadRouteCount + 1;  // +1 for not found handler
     config.stack_size = 8192;
+    config.lru_purge_enable = true;  // 启用LRU清理
 
     esp_err_t err = httpd_start(&_server, &config);
     if (err != ESP_OK) {
@@ -180,7 +449,23 @@ void HttpServer::begin() {
         }
     }
 
-    ESP_LOGI(TAG, "Server started on port %d with %d routes", _port, _routeCount);
+    // 注册上传路由
+    for (int i = 0; i < _uploadRouteCount; i++) {
+        httpd_uri_t uriConfig = {};
+        uriConfig.uri = _uploadRoutes[i].uri;
+        uriConfig.method = HTTP_POST;  // 上传只接受POST
+        uriConfig.handler = _handleUpload;
+        uriConfig.user_ctx = this;
+
+        err = httpd_register_uri_handler(_server, &uriConfig);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to register upload URI %s: %s",
+                     _uploadRoutes[i].uri, esp_err_to_name(err));
+        }
+    }
+
+    ESP_LOGI(TAG, "Server started on port %d with %d routes, %d upload routes",
+             _port, _routeCount, _uploadRouteCount);
 }
 
 // 停止服务器
