@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <poll.h>
+#include <sys/ioctl.h>
 #include "esp_log.h"
 
 static const char* TAG = "TCP_SERVER";

@@ -1,9 +1,12 @@
 #include "./hardware/lcd_driver.h"
 
 #include <cstring>
-#include <Arduino.h>
+#include <cstdio>
 #include "esp_rom_sys.h"
+#include "esp_log.h"
 #include "driver/ledc.h"
+
+static const char* TAG = "LCD";
 
 inline void _gpioWrite(int data, int mode); // 前置声明
 int lcdCursor = 0;  // 当前光标位置，全局变量 0~31
@@ -200,7 +203,7 @@ void lcdReconfigPwmForLightSleep() {
     bla_timer.clk_cfg         = LEDC_USE_RTC8M_CLK;  // RC_FAST/RTC8M 在 light sleep 期间不停摆
     esp_err_t err = ledc_timer_config(&bla_timer);
     if (err != ESP_OK) {
-        Serial.printf("[LCD] backlight timer reconfig failed: %d\n", static_cast<int>(err));
+        ESP_LOGW(TAG, "backlight timer reconfig failed: %d", static_cast<int>(err));
     }
 
     // 对比度：channel 2 → timer 1
@@ -212,7 +215,7 @@ void lcdReconfigPwmForLightSleep() {
     ctl_timer.clk_cfg         = LEDC_USE_RTC8M_CLK;
     err = ledc_timer_config(&ctl_timer);
     if (err != ESP_OK) {
-        Serial.printf("[LCD] contrast timer reconfig failed: %d\n", static_cast<int>(err));
+        ESP_LOGW(TAG, "contrast timer reconfig failed: %d", static_cast<int>(err));
     }
 }
 

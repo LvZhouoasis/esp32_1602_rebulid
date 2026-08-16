@@ -13,6 +13,26 @@
 // ESP-IDF 驱动
 #include "driver/gpio.h"
 
+// Arduino 兼容常量
+#ifndef HIGH
+#define HIGH 1
+#endif
+#ifndef LOW
+#define LOW 0
+#endif
+#ifndef INPUT
+#define INPUT 0
+#endif
+#ifndef OUTPUT
+#define OUTPUT 1
+#endif
+#ifndef INPUT_PULLUP
+#define INPUT_PULLUP 2
+#endif
+#ifndef INPUT_PULLDOWN
+#define INPUT_PULLDOWN 3
+#endif
+
 // ESP-IDF 系统
 #include <esp_timer.h>
 
@@ -59,11 +79,29 @@ inline T constrain(T x, T a, T b) {
 
 /**
  * @brief 将指定 GPIO 引脚配置为输出模式
- * 
+ *
  * @param[in] pin GPIO 引脚号
  */
 inline void setOutput(int pin) {
     gpio_set_direction((gpio_num_t)pin, GPIO_MODE_OUTPUT);
+}
+
+/**
+ * @brief 设置 GPIO 引脚模式（替代 Arduino pinMode）
+ *
+ * @param[in] pin GPIO 引脚号
+ * @param[in] mode 引脚模式（INPUT, OUTPUT, INPUT_PULLUP, INPUT_PULLDOWN）
+ */
+inline void pinMode(int pin, int mode) {
+    if (mode == OUTPUT) {
+        gpio_set_direction((gpio_num_t)pin, GPIO_MODE_OUTPUT);
+    } else if (mode == INPUT_PULLUP) {
+        setInputPullUp(pin);
+    } else if (mode == INPUT_PULLDOWN) {
+        setInputPullDown(pin);
+    } else {
+        gpio_set_direction((gpio_num_t)pin, GPIO_MODE_INPUT);
+    }
 }
 
 /**

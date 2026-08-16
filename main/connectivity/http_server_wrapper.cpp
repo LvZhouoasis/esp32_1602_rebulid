@@ -154,28 +154,29 @@ void HttpServer::begin() {
     for (int i = 0; i < _routeCount; i++) {
         httpd_uri_t uriConfig = {};
         uriConfig.uri = _routes[i].uri;
-        uriConfig.method = HTTP_GET;  // 默认GET，后面会处理方法匹配
         uriConfig.handler = _handleRequest;
         uriConfig.user_ctx = this;
 
         // 根据注册的方法设置HTTP方法
-        if (_routes[i].method == HTTP_POST) {
-            uriConfig.method = HTTP_POST;
-        } else if (_routes[i].method == HTTP_PUT) {
-            uriConfig.method = HTTP_PUT;
-        } else if (_routes[i].method == HTTP_DELETE) {
-            uriConfig.method = HTTP_DELETE;
-        } else {
+        if (_routes[i].method == -1) {
             // 注册为所有方法
-            uriConfig.method = HTTP_GET;
-            httpd_register_uri_handler(_server, &uriConfig);
-            uriConfig.method = HTTP_POST;
-        }
-
-        err = httpd_register_uri_handler(_server, &uriConfig);
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to register URI %s: %s",
-                     _routes[i].uri, esp_err_to_name(err));
+            const httpd_method_t methods[] = {HTTP_GET, HTTP_POST, HTTP_PUT, HTTP_DELETE};
+            for (int m = 0; m < 4; m++) {
+                uriConfig.method = methods[m];
+                err = httpd_register_uri_handler(_server, &uriConfig);
+                if (err != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed to register URI %s: %s",
+                             _routes[i].uri, esp_err_to_name(err));
+                }
+            }
+        } else {
+            // 注册为指定方法
+            uriConfig.method = (httpd_method_t)_routes[i].method;
+            err = httpd_register_uri_handler(_server, &uriConfig);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to register URI %s: %s",
+                         _routes[i].uri, esp_err_to_name(err));
+            }
         }
     }
 

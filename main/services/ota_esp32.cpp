@@ -56,13 +56,13 @@ bool OTAUpdate::begin(size_t size) {
 size_t OTAUpdate::write(const uint8_t* data, size_t length) {
     if (!_running) {
         ESP_LOGE(TAG, "OTA not started");
-        return -1;
+        return 0;
     }
 
     _lastError = esp_ota_write(_handle, data, length);
     if (_lastError != ESP_OK) {
         ESP_LOGE(TAG, "esp_ota_write failed: %d", _lastError);
-        return -1;
+        return 0;
     }
 
     _written += length;

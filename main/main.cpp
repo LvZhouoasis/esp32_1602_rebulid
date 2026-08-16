@@ -29,7 +29,7 @@
 #include <esp_system.h>
 #include <esp_pm.h>
 #include <esp_wifi.h>
-#include <esp32-hal-cpu.h>
+#include <esp_clk.h>
 #ifndef ENABLE_DYNAMIC_CPU_FREQ
 #define ENABLE_DYNAMIC_CPU_FREQ 0
 #endif
@@ -53,11 +53,21 @@ static void _setCpuTargetFreqMhz(int targetMHz) {
     if (targetMHz <= 0 || targetMHz == s_currentCpuFreqMHz) {
         return;
     }
-    if (setCpuFrequencyMhz(targetMHz)) {
+
+    // ESP-IDF 原生 API: 使用 esp_pm_configure 设置 CPU 频率
+    // 需要启用 CONFIG_PM_ENABLE
+    esp_pm_config_t pm_config = {
+        .max_freq_mhz = targetMHz,
+        .min_freq_mhz = targetMHz,
+        .light_sleep_enable = false
+    };
+
+    esp_err_t err = esp_pm_configure(&pm_config);
+    if (err == ESP_OK) {
         s_currentCpuFreqMHz = targetMHz;
         LOG_SYSTEM_INFO("CPU frequency -> %d MHz", s_currentCpuFreqMHz);
     } else {
-        LOG_SYSTEM_WARN("Failed to set CPU frequency -> %d MHz", targetMHz);
+        LOG_SYSTEM_WARN("Failed to set CPU frequency -> %d MHz (err=%d)", targetMHz, static_cast<int>(err));
     }
 }
 
