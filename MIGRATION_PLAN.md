@@ -983,41 +983,46 @@ public:
     int getSize();
     TcpClient* getStreamPtr();
 
-#### 阶段 7.5：HTTP 客户端封装（待执行）
+#### ✅ 阶段 7.5：HTTP 客户端封装（已完成）
 
-**目标**：替换 HTTPClient.h 的所有调用
+**完成日期**：2026-08-16
 
-**封装类设计**：
+**新建文件**：
+- `include/connectivity/http_client_wrapper.h` - HttpClientWrapper 类声明
+- `main/connectivity/http_client_wrapper.cpp` - ESP-IDF http_client 实现
+
+**封装的 API（兼容 Arduino HTTPClient）**：
 ```cpp
-// include/connectivity/http_client_wrapper.h
-class HttpClientWrapper {
-public:
-    HttpClientWrapper();
-    ~HttpClientWrapper();
-    bool begin(const char* url);
-    bool begin(TcpClient& client, const char* url);
-    void end();
-    void addHeader(const char* name, const char* value);
-    int GET();
-    int getSize();
-    TcpClient* getStreamPtr();
-    String getString();
-    bool connected();
-};
+HttpClientWrapper()                  // 构造函数
+~HttpClientWrapper()                 // 析构函数
+begin(url)                           // 开始 HTTP 请求
+begin(client, url)                   // 开始 HTTP 请求（使用指定的 TCP 客户端）
+end()                                // 结束 HTTP 请求
+addHeader(name, value)               // 添加请求头
+GET()                                // 发送 GET 请求
+getSize()                            // 获取响应体大小
+getStreamPtr()                       // 获取响应流指针
+getString()                          // 获取响应体字符串
+connected()                          // 检查是否已连接
 ```
 
 **ESP-IDF 实现要点**：
 - 使用 `esp_http_client_init()` 初始化
-- 使用 `esp_http_client_perform()` 执行请求
-- 使用 `esp_http_client_read()` 读取响应
-- 使用 `esp_http_client_set_header()` 设置头
+- 使用 `esp_http_client_open()` 打开连接
+- 使用 `esp_http_client_fetch_headers()` 获取响应头
+- 使用 `esp_http_client_read_response()` 读取响应体
+- 使用 `esp_http_client_set_header()` 设置请求头
+- 使用 `esp_http_client_get_status_code()` 获取状态码
+- 使用 `esp_http_client_get_content_length()` 获取内容长度
 
-**需要修改的文件**：
-- `main/services/web_setting.cpp` - 替换 HTTPClient 用于城市搜索
-- `main/applications/weather.cpp` - 替换 HTTPClient 用于天气 API
-- `main/services/ota_manager.cpp` - 替换 HTTPClient 用于 OTA 下载
+**更新文件**：
+- `main/services/web_setting.cpp` - 使用 HttpClientWrapper 替代 HTTPClient
+- `main/applications/weather.cpp` - 使用 HttpClientWrapper 替代 HTTPClient
+- `main/CMakeLists.txt` - 添加 http_client_wrapper.cpp
 
-**预计工时**：1-2 天
+**说明**：
+- `getStreamPtr()` 返回 nullptr，建议使用 `getString()` 获取完整响应
+- ota_manager.cpp 中的 HTTPClient 使用将在阶段 7.6 处理
 
 ---
 
@@ -1188,7 +1193,7 @@ esp_pm_configure(&pm_config);
 | 4 | GPIO 和硬件抽象层 | 1-2 天 | ★★☆ | ✅ 已完成 |
 | 5 | I2C 通信迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
 | 6 | SPIFFS 文件系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
-| 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | 🔄 进行中（7.1-7.4已完成） |
+| 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | 🔄 进行中（7.1-7.5已完成） |
 | 8 | 第三方库适配和清理 | 2-3 天 | ★★☆ | ⏳ 待执行 |
 | **总计** | - | **25-37 天** | - | 6.1/8 完成 |
 

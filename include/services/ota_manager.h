@@ -10,10 +10,8 @@
 #ifndef OTA_MANAGER_H
 #define OTA_MANAGER_H
 
-#include <Update.h>
-#include <WiFiClientSecure.h>
-#include <HTTPClient.h>
-
+#include "./services/ota_esp32.h"
+#include "./connectivity/http_client_wrapper.h"
 #include "./utils/logger.h"
 #include "./hardware/lcd_driver.h"
 #include "./hardware/rgb_led.h"

@@ -39,6 +39,7 @@ idf_component_register(
         "services/wifi_config_manager.cpp"
         "services/qweather_auth_config_manager.cpp"
         "services/ota_manager.cpp"
+        "services/ota_esp32.cpp"
         "services/time_manager.cpp"
         "services/sleep_manager.cpp"
         "services/auto_brightness.cpp"
