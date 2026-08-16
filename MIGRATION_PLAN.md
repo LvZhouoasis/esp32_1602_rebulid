@@ -1,9 +1,9 @@
 # ESP32 1602A 项目分析与 ESP-IDF 迁移计划
 
-> 文档版本：1.1
+> 文档版本：1.2
 > 创建日期：2026-08-15
 > 最后更新：2026-08-16
-> 当前分支：1.1.2（基于 1.0.1，已完成方案B：millis/delay 替换）
+> 当前分支：1.1.3（基于 1.1.2，ESP-IDF 迁移完成）
 
 ---
 
@@ -1282,7 +1282,29 @@ HTTPUpload& upload();
 | 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | ✅ 已完成 |
 | 7+ | 阶段7代码审查 | 0.5 天 | ★★☆ | ✅ 已完成 |
 | 8 | 第三方库适配和清理 | 1-2 天 | ★★☆ | ✅ 已完成 |
-| **总计** | - | **24-37 天** | - | **8/8 完成** |
+| 8+ | 第二次全面代码审查 | 0.5 天 | ★★☆ | ✅ 已完成 |
+| **总计** | - | **25-38 天** | - | **8/8 完成** |
+
+---
+
+### 附录：第二次代码审查记录（2026-08-16）
+
+**审查范围**：所有 ESP-IDF 封装层和修改过的文件
+
+**发现并修复的 Bug**：
+
+| # | 严重程度 | 文件 | 问题 | 修复方案 |
+|---|----------|------|------|----------|
+| 1 | 🔴 严重 | ota_manager.cpp | `strlen()` 用于二进制固件数据，导致只写入部分固件 | 添加 `getResponseData()` 方法返回二进制数据和长度 |
+| 2 | 🔴 严重 | wifi_esp32.cpp | 断开连接事件中无条件调用 `esp_wifi_connect()` | 添加 `_autoReconnect` 和 `_userDisconnect` 标志 |
+| 3 | 🔴 严重 | mydefine.h | `pinMode()` 调用 `setInputPullUp/Down`，但函数在后面才定义 | 调整函数声明顺序 |
+| 4 | 🟡 中等 | http_server_wrapper.cpp | `accumLen - 3` 当 `accumLen < 3` 时会下溢 | 添加 `accumLen >= 4` 检查 |
+| 5 | 🟡 中等 | weather.cpp | gzip 响应使用 `strlen()` 获取长度 | 改用 `getResponseData()` |
+
+**新增功能**：
+- `HttpClientWrapper::getResponseData(size_t* len)` - 支持二进制数据读取
+- `WiFiClass::_autoReconnect` - 自动重连控制标志
+- `WiFiClass::_userDisconnect` - 用户主动断开标志
 
 ### 4.3 风险和注意事项
 
