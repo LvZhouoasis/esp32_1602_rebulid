@@ -728,83 +728,289 @@ i2c_cmd_link_delete(cmd);
 
 ---
 
-### 阶段 7：WiFi 和网络迁移
+### 阶段 7：WiFi 和网络迁移（进行中）
 
-**目标**：替换 Arduino WiFi/WebServer/HTTPClient 库
+**目标**：替换 Arduino WiFi/WebServer/HTTPClient/WiFiServer/WiFiClient 库为 ESP-IDF 原生 API
 
-**预计工时**：5-7 天
+**预计工时**：9-14 天（最复杂阶段）
 
-**涉及文件**：
-- `src/connectivity/wifi_config.cpp`（WiFi、WebServer、DNSServer）
-- `src/connectivity/network.cpp`（WiFiServer、WiFiClient）
-- `src/services/web_setting.cpp`（WebServer、HTTPClient）
-- `src/services/ota_manager.cpp`（HTTPClient、Update）
-- `src/applications/weather.cpp`（HTTPClient）
-- `src/services/time_manager.cpp`（WiFi）
+**迁移范围**：113 处 Arduino WiFi 相关 API 调用，分布在 18 个文件中
 
-#### 7.1 WiFi 连接
+#### 需要替换的 Arduino 库
+
+| Arduino 库 | ESP-IDF 替代 | 使用文件数 |
+|-----------|------------|-----------|
+| `WiFi.h` | `esp_wifi` + `esp_netif` | 6 个 |
+| `WebServer.h` | `esp_http_server` | 2 个 |
+| `DNSServer.h` | 自定义实现 | 1 个 |
+| `HTTPClient.h` | `esp_http_client` | 3 个 |
+| `WiFiServer.h` | BSD Socket API | 2 个 |
+| `WiFiClient.h` | BSD Socket API | 3 个 |
+| `WiFiClientSecure.h` | `esp_http_client` (HTTPS) | 1 个 |
+| `Update.h` | `esp_ota` | 2 个 |
+
+#### 涉及文件清单
+
+**核心网络层（必须重写）：**
+1. `include/connectivity/wifi_config.h` - WebServer, DNSServer
+2. `main/connectivity/wifi_config.cpp` - WiFi 连接、AP 模式、DNS、WebServer 配网
+3. `include/connectivity/network.h` - WiFiServer, WiFiClient
+4. `main/connectivity/network.cpp` - TCP 服务器、客户端管理
+
+**服务层（需要适配）：**
+5. `main/services/web_setting.cpp` - WebServer 路由、HTTPClient
+6. `include/services/ota_manager.h` - HTTPClient, WiFiClientSecure, Update
+7. `main/services/ota_manager.cpp` - OTA 下载、写入
+8. `main/services/time_manager.cpp` - WiFi.status(), WiFi.localIP()
+
+**应用层（需要适配）：**
+9. `main/applications/weather.cpp` - HTTPClient, WiFi.status()
+10. `main/applications/setting.cpp` - WiFi.status(), WiFi.localIP()
+11. `main/menu/menu.cpp` - WiFi.status(), WiFi.localIP()
+
+**系统层（需要适配）：**
+12. `main/main.cpp` - WiFi.setSleep(), WiFi.status(), WiFi.localIP(), WiFi.setTxPower()
+13. `main/services/sleep_manager.cpp` - WiFi.status(), WiFi.disconnect(), WiFi.mode()
+
+**头文件依赖：**
+14. `include/hardware/button.h` - extern WiFiClient client
+
+---
+
+#### ✅ 阶段 7.1：WiFi 基础连接封装（已完成）
+
+**完成日期**：2026-08-15
+
+**新建文件**：
+- `include/connectivity/wifi_esp32.h` - WiFi 封装类声明
+- `main/connectivity/wifi_esp32.cpp` - ESP-IDF WiFi 实现
+
+**封装的 API（兼容 Arduino WiFi）**：
 ```cpp
-// Arduino
-WiFi.mode(WIFI_STA);
-WiFi.begin(ssid, password);
-WiFi.status();
-WiFi.localIP();
-WiFi.disconnect();
-
-// ESP-IDF
-wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-esp_wifi_init(&cfg);
-esp_wifi_set_mode(WIFI_MODE_STA);
-wifi_config_t wifi_config = { ... };
-esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
-esp_wifi_start();
-esp_wifi_connect();
-
-// 获取 IP
-esp_netif_ip_info_t ip_info;
-esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"), &ip_info);
+WiFi.init()              // 初始化 WiFi 子系统
+WiFi.begin(ssid, pwd)    // 连接到 WiFi 网络
+WiFi.softAP(ssid)        // 启动软 AP 模式
+WiFi.status()            // 获取连接状态（WL_CONNECTED 等）
+WiFi.localIP()           // 获取本地 IP 地址
+WiFi.softAPIP()          // 获取软 AP 的 IP 地址
+WiFi.SSID()              // 获取已连接的 SSID
+WiFi.RSSI()              // 获取信号强度
+WiFi.macAddress()        // 获取 MAC 地址
+WiFi.scanNetworks()      // 扫描可用网络
+WiFi.SSID(index)         // 获取扫描结果的 SSID
+WiFi.RSSI(index)         // 获取扫描结果的 RSSI
+WiFi.encryptionType(index) // 获取扫描结果的加密类型
+WiFi.setSleep(enable)    // 设置睡眠模式
+WiFi.setTxPower(dbm)     // 设置发射功率
+WiFi.disconnect(wifiOff) // 断开连接
+WiFi.setMode(mode)       // 设置 WiFi 模式
 ```
 
-#### 7.2 WebServer
+**ESP-IDF 实现要点**：
+- 使用 `esp_wifi_init()` 初始化
+- 使用 `esp_wifi_set_mode()` 设置模式
+- 使用 `esp_wifi_set_config()` 配置 SSID/密码
+- 使用 `esp_wifi_connect()` 连接
+- 使用 `esp_netif_get_ip_info()` 获取 IP
+- 使用 `esp_wifi_scan_start()` 扫描
+- 使用 `esp_event_handler_instance_register()` 注册事件处理
+
+**更新文件**：
+- `main/CMakeLists.txt` - 添加 wifi_esp32.cpp、esp_http_server、esp_ota 依赖
+- `include/connectivity/wifi_config.h` - 使用 wifi_esp32.h 替代 Arduino WiFi
+
+---
+
+#### 阶段 7.2：HTTP 服务器封装（待执行）
+
+**目标**：替换 WebServer.h 的所有调用
+
+**封装类设计**：
 ```cpp
-// Arduino WebServer
-WebServer server(80);
-server.on("/api/info", HTTP_GET, handleInfo);
-server.begin();
-server.handleClient();
-
-// ESP-IDF httpd
-httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-httpd_handle_t server = NULL;
-httpd_start(&server, &config);
-
-httpd_uri_t uri_info = {
-    .uri = "/api/info",
-    .method = HTTP_GET,
-    .handler = handleInfo,
-    .user_ctx = NULL
+// include/connectivity/http_server_wrapper.h
+class HttpServer {
+public:
+    HttpServer(int port);
+    void on(const char* uri, std::function<void()> handler);
+    void on(const char* uri, int method, std::function<void()> handler);
+    void onNotFound(std::function<void()> handler);
+    void begin();
+    void handleClient();
+    void send(int code, const char* contentType, const char* content);
+    void sendHeader(const char* name, const char* value);
+    void setContentLength(int length);
+    void sendContent_P(const char* content, int length);
+    String arg(const char* name);
+    bool hasArg(const char* name);
+    int method();
 };
-httpd_register_uri_handler(server, &uri_info);
 ```
 
-#### 7.3 HTTPClient
+**ESP-IDF 实现要点**：
+- 使用 `httpd_start()` 启动服务器
+- 使用 `httpd_register_uri_handler()` 注册 URI 处理
+- 使用 `httpd_resp_send()` 发送响应
+- 使用 `httpd_req_get_url_query_str()` 获取查询参数
+
+**需要修改的文件**：
+- `main/connectivity/wifi_config.cpp` - 替换 apServer 的所有调用
+- `main/services/web_setting.cpp` - 替换 settingServer 的所有调用
+
+**预计工时**：2-3 天
+
+---
+
+#### 阶段 7.3：DNS 服务器实现（待执行）
+
+**目标**：替换 DNSServer.h 的调用，实现强制门户功能
+
+**实现方案**：
+- 使用 ESP-IDF 的 DNS 服务器实现，或移植一个轻量级 DNS 服务器
+- 主要用于强制门户（captive portal）功能
+
+**需要修改的文件**：
+- `main/connectivity/wifi_config.cpp` - 替换 dnsServer 的所有调用
+
+**预计工时**：1 天
+
+---
+
+#### 阶段 7.4：TCP 服务器和客户端封装（待执行）
+
+**目标**：替换 WiFiServer.h 和 WiFiClient.h 的所有调用
+
+**封装类设计**：
 ```cpp
-// Arduino HTTPClient
-HTTPClient http;
-http.begin(url);
-http.addHeader("Authorization", "Bearer " + token);
-int code = http.GET();
-WiFiClient* stream = http.getStreamPtr();
-
-// ESP-IDF esp_http_client
-esp_http_client_config_t config = {
-    .url = url,
+// include/connectivity/tcp_server.h
+class TcpServer {
+public:
+    TcpServer(int port);
+    void begin();
+    void end();
+    TcpClient accept();
 };
-esp_http_client_handle_t client = esp_http_client_open(&client, HTTP_METHOD_GET);
-esp_http_client_set_header(client, "Authorization", bearer);
-esp_http_client_fetch_headers(client);
-int code = esp_http_client_get_status_code(client);
+
+class TcpClient {
+public:
+    TcpClient();
+    bool connected();
+    int available();
+    int read(uint8_t* buffer, size_t length);
+    void stop();
+    void setNoDelay(bool enable);
+    IPAddress remoteIP();
+    int remotePort();
+    operator bool();
+};
 ```
+
+**ESP-IDF 实现要点**：
+- 使用 BSD Socket API（`socket()`, `bind()`, `listen()`, `accept()`）
+- 使用 `setsockopt()` 设置 TCP_NODELAY
+- 使用 `getpeername()` 获取远程 IP/端口
+
+**需要修改的文件**：
+- `include/connectivity/network.h` - 替换 WiFiServer, WiFiClient 声明
+- `main/connectivity/network.cpp` - 替换 server.accept(), client 的所有调用
+- `include/hardware/button.h` - 替换 extern WiFiClient client
+- `main/services/ota_manager.cpp` - 替换 WiFiClient 使用
+
+**预计工时**：2-3 天
+
+---
+
+#### 阶段 7.5：HTTP 客户端封装（待执行）
+
+**目标**：替换 HTTPClient.h 的所有调用
+
+**封装类设计**：
+```cpp
+// include/connectivity/http_client_wrapper.h
+class HttpClientWrapper {
+public:
+    HttpClientWrapper();
+    ~HttpClientWrapper();
+    bool begin(const char* url);
+    bool begin(TcpClient& client, const char* url);
+    void end();
+    void addHeader(const char* name, const char* value);
+    int GET();
+    int getSize();
+    TcpClient* getStreamPtr();
+    String getString();
+    bool connected();
+};
+```
+
+**ESP-IDF 实现要点**：
+- 使用 `esp_http_client_init()` 初始化
+- 使用 `esp_http_client_perform()` 执行请求
+- 使用 `esp_http_client_read()` 读取响应
+- 使用 `esp_http_client_set_header()` 设置头
+
+**需要修改的文件**：
+- `main/services/web_setting.cpp` - 替换 HTTPClient 用于城市搜索
+- `main/applications/weather.cpp` - 替换 HTTPClient 用于天气 API
+- `main/services/ota_manager.cpp` - 替换 HTTPClient 用于 OTA 下载
+
+**预计工时**：1-2 天
+
+---
+
+#### 阶段 7.6：OTA 升级迁移（待执行）
+
+**目标**：替换 Update.h 和 WiFiClientSecure.h 的调用
+
+**封装设计**：
+```cpp
+// 使用 esp_ota_ops.h
+bool otaBegin(size_t size);
+bool otaWrite(const uint8_t* data, size_t length);
+bool otaEnd();
+void otaAbort();
+```
+
+**ESP-IDF 实现要点**：
+- 使用 `esp_ota_get_next_update_partition()` 获取分区
+- 使用 `esp_ota_begin()` 开始 OTA
+- 使用 `esp_ota_write()` 写入数据
+- 使用 `esp_ota_end()` 完成 OTA
+- 使用 `esp_ota_set_boot_partition()` 设置启动分区
+
+**需要修改的文件**：
+- `include/services/ota_manager.h` - 移除 Arduino OTA 头文件
+- `main/services/ota_manager.cpp` - 替换 Update 类的所有调用
+
+**预计工时**：1-2 天
+
+---
+
+#### 阶段 7.7：清理和测试（待执行）
+
+**目标**：移除所有 Arduino WiFi 相关头文件，确保编译通过
+
+**需要移除的头文件**：
+- `#include <WiFi.h>`
+- `#include <WebServer.h>`
+- `#include <DNSServer.h>`
+- `#include <HTTPClient.h>`
+- `#include <WiFiClientSecure.h>`
+- `#include <Update.h>`
+- `#include <WiFiServer.h>`
+- `#include <WiFiClient.h>`
+
+**功能验证**：
+1. WiFi 连接功能
+2. AP 配网模式
+3. TCP 服务器连接
+4. Web 设置页面
+5. OTA 升级
+6. 天气 API 调用
+7. 深度睡眠唤醒后 WiFi 恢复
+
+**预计工时**：1 天
+
+---
 
 #### 7.4 OTA
 ```cpp
@@ -918,9 +1124,9 @@ esp_pm_configure(&pm_config);
 | 4 | GPIO 和硬件抽象层 | 1-2 天 | ★★☆ | ✅ 已完成 |
 | 5 | I2C 通信迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
 | 6 | SPIFFS 文件系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
-| 7 | WiFi 和网络迁移 | 5-7 天 | ★★★ | ⏳ 待执行（最复杂阶段） |
+| 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | 🔄 进行中（7.1已完成） |
 | 8 | 第三方库适配和清理 | 2-3 天 | ★★☆ | ⏳ 待执行 |
-| **总计** | - | **20-30 天** | - | 6/8 完成 |
+| **总计** | - | **25-37 天** | - | 6.1/8 完成 |
 
 ### 4.3 风险和注意事项
 
