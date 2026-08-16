@@ -10,8 +10,6 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
-#include <Arduino.h>
-#include <WiFi.h>
 #include <deque>
 #include <vector>
 
@@ -19,16 +17,17 @@
 #include "freertos/semphr.h"
 
 #include "mydefine.h"
+#include "./connectivity/tcp_server.h"
 #include "./hardware/rgb_led.h"
 #include "./services/protocol.h"
 
 /**
  * @brief 外部变量声明，用于网络模块间共享
- * 
+ *
  * 这些变量在 network.cpp 文件中定义，供其他文件引用使用
  */
-extern WiFiServer server;                   /**< WiFi 服务器对象 */
-extern WiFiClient client;                   /**< 当前连接的客户端对象 */
+extern TcpServer server;                    /**< TCP 服务器对象 */
+extern TcpClient client;                    /**< 当前连接的客户端对象 */
 extern bool clientConnected;                /**< 客户端连接状态标志 */
 extern std::vector<uint8_t> recvBuffer;     /**< 接收数据缓冲区 */
 extern unsigned long lastClientActivity;    /**< 上次客户端活动时间戳 */

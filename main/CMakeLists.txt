@@ -29,6 +29,7 @@ idf_component_register(
         "connectivity/wifi_esp32.cpp"
         "connectivity/http_server_wrapper.cpp"
         "connectivity/dns_server.cpp"
+        "connectivity/tcp_server.cpp"
 
         # 服务层
         "services/protocol.cpp"

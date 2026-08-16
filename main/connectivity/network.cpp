@@ -6,12 +6,12 @@
 volatile uint32_t gFramesEnqueued = 0;
 volatile uint32_t gFramesDropped = 0;
 
-WiFiClient client;  // 定义客户端对象
+TcpClient client;  // 定义客户端对象
 SemaphoreHandle_t clientMutex = nullptr;
 std::deque<FramePacket> frameCache;     // 用双端队列方便插入删除
 
 // 连接用
-WiFiServer server(CONNECT_PORT);        //连接端口
+TcpServer server(CONNECT_PORT);        //连接端口
 bool clientConnected = false;
 static volatile bool s_appInterfaceNetworkRequired =
 #if APP_INTERFACE_DEFAULT_NETWORK_REQUIRED

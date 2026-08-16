@@ -81,11 +81,11 @@ void resetButtonDebounce();
 void globalButtonDelay(unsigned long delayMs = 200);
 
 /**
- * @brief WiFi 客户端对象，用于发送按钮信息
+ * @brief TCP 客户端对象，用于发送按钮信息
  *
  * 通过该客户端实现与服务器的 TCP 连接，传输按钮状态数据
  */
-extern WiFiClient client;
+extern TcpClient client;
 
 /**
  * @brief 启动按键相关任务

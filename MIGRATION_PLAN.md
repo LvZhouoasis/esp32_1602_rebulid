@@ -870,20 +870,60 @@ hasHeader(name)                     // 检查请求头是否存在
 
 ---
 
-#### 阶段 7.3：DNS 服务器实现（待执行）
+#### ✅ 阶段 7.3：DNS 服务器实现（已完成）
 
-**目标**：替换 DNSServer.h 的调用，实现强制门户功能
+**完成日期**：2026-08-16
 
-**实现方案**：
-- 使用 ESP-IDF 的 DNS 服务器实现，或移植一个轻量级 DNS 服务器
-- 主要用于强制门户（captive portal）功能
+**新建文件**：
+- `include/connectivity/dns_server.h` - DNSServer 类声明
+- `main/connectivity/dns_server.cpp` - ESP-IDF UDP socket 实现
 
-**需要修改的文件**：
-- `main/connectivity/wifi_config.cpp` - 替换 dnsServer 的所有调用
+**实现方式**：
+使用 ESP-IDF 的 BSD Socket API 实现轻量级 DNS 服务器，用于强制门户（Captive Portal）功能
 
-**预计工时**：1 天
+**封装的 API**：
+```cpp
+DNSServer()                           // 构造函数
+start(port, domain, ip)               // 启动 DNS 服务器
+stop()                                // 停止 DNS 服务器
+processNextRequest()                  // 处理 DNS 请求（非阻塞）
+isRunning()                           // 检查服务器状态
+```
+
+**ESP-IDF 实现要点**：
+- 使用 `socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)` 创建 UDP socket
+- 使用 `fcntl()` 设置非阻塞模式
+- 使用 `bind()` 绑定到端口 53
+- 使用 `recvfrom()` 接收 DNS 查询
+- 使用 `sendto()` 发送 DNS 响应
+- 解析 DNS 协议头部，构建 DNS 响应
+- 将所有域名查询响应为 ESP32 的 IP 地址
+
+**更新文件**：
+- `include/connectivity/wifi_config.h` - 添加 DNSServer 头文件和 extern 声明
+- `main/connectivity/wifi_config.cpp` - 使用新的 DNSServer 类
+- `main/CMakeLists.txt` - 添加 dns_server.cpp
+
+**功能验证**：
+- DNS 服务器监听 UDP 53 端口
+- 将所有域名查询（"*"）响应为 AP 的 IP 地址
+- 支持 Android/iOS/Windows 设备的强制门户检测
+- 非阻塞处理，不影响主循环
 
 ---
+
+#### 阶段 7.4：TCP 服务器和客户端封装（待执行）
+
+**目标**：替换 WiFiServer.h 和 WiFiClient.h 的所有调用
+
+**封装类设计**：
+```cpp
+// include/connectivity/tcp_server.h
+class TcpServer {
+public:
+    TcpServer(int port);
+    void begin();
+    void end();
 
 #### 阶段 7.4：TCP 服务器和客户端封装（待执行）
 
@@ -1134,7 +1174,7 @@ esp_pm_configure(&pm_config);
 | 4 | GPIO 和硬件抽象层 | 1-2 天 | ★★☆ | ✅ 已完成 |
 | 5 | I2C 通信迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
 | 6 | SPIFFS 文件系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
-| 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | 🔄 进行中（7.1-7.2已完成） |
+| 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | 🔄 进行中（7.1-7.3已完成） |
 | 8 | 第三方库适配和清理 | 2-3 天 | ★★☆ | ⏳ 待执行 |
 | **总计** | - | **25-37 天** | - | 6.1/8 完成 |
 
