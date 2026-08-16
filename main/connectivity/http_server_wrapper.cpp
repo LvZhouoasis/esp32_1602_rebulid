@@ -245,26 +245,26 @@ void HttpServer::sendContent(const char* content) {
 }
 
 // 获取查询参数值
-String HttpServer::arg(const char* name) {
+const char* HttpServer::arg(const char* name) {
     for (int i = 0; i < _currentContext.argCount; i++) {
         if (strcmp(_currentContext.args[i].key, name) == 0) {
-            return String(_currentContext.args[i].value);
+            return _currentContext.args[i].value;
         }
     }
-    return String("");
+    return "";
 }
 
 // 获取POST请求体
-String HttpServer::argPlain() {
-    if (!_currentContext.req) return String("");
+const char* HttpServer::argPlain() {
+    if (!_currentContext.req) return "";
 
-    // 读取请求体
-    char buffer[1024];
+    // 读取请求体到静态缓冲区
+    static char buffer[1024];
     int ret = httpd_req_recv(_currentContext.req, buffer, sizeof(buffer) - 1);
-    if (ret <= 0) return String("");
+    if (ret <= 0) return "";
 
     buffer[ret] = '\0';
-    return String(buffer);
+    return buffer;
 }
 
 // 检查是否存在查询参数
@@ -283,22 +283,22 @@ int HttpServer::method() {
 }
 
 // 获取请求URI
-String HttpServer::uri() {
-    if (!_currentContext.req) return String("");
-    return String(_currentContext.req->uri);
+const char* HttpServer::uri() {
+    if (!_currentContext.req) return "";
+    return _currentContext.req->uri;
 }
 
 // 获取请求头
-String HttpServer::header(const char* name) {
-    if (!_currentContext.req) return String("");
+const char* HttpServer::header(const char* name) {
+    if (!_currentContext.req) return "";
 
-    char buffer[256];
+    static char buffer[256];
     size_t len = httpd_req_get_hdr_value_str(_currentContext.req, name,
                                               buffer, sizeof(buffer));
     if (len > 0) {
-        return String(buffer);
+        return buffer;
     }
-    return String("");
+    return "";
 }
 
 // 检查是否存在请求头

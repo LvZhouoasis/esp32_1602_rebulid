@@ -65,7 +65,7 @@ public:
      * @brief 获取响应体字符串
      * @return 响应体字符串
      */
-    String getString();
+    const char* getString();
 
     /**
      * @brief 检查是否已连接

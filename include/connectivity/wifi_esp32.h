@@ -44,11 +44,12 @@
 class IPAddress {
 private:
     uint32_t _address;
+    mutable char _strBuffer[16];  // 用于toString()的缓冲区
 public:
     IPAddress();
     IPAddress(uint8_t first, uint8_t second, uint8_t third, uint8_t fourth);
     IPAddress(uint32_t address);
-    String toString() const;
+    const char* toString() const;
     operator uint32_t() const { return _address; }
     bool operator==(const IPAddress& other) const { return _address == other._address; }
     bool operator!=(const IPAddress& other) const { return _address != other._address; }
@@ -77,6 +78,7 @@ private:
     static char _connectedSSID[33];
     static int _scanCount;
     static WiFiScanResult* _scanResults;
+    static char _macBuffer[18];  // 用于macAddress()的缓冲区
 
     static void _eventHandler(void* arg, esp_event_base_t eventBase,
                              int32_t eventId, void* eventData);
@@ -132,7 +134,7 @@ public:
      * @brief 获取已连接的SSID
      * @return SSID字符串
      */
-    static String SSID();
+    static const char* SSID();
 
     /**
      * @brief 获取信号强度
@@ -144,7 +146,7 @@ public:
      * @brief 获取MAC地址
      * @return MAC地址字符串
      */
-    static String macAddress();
+    static const char* macAddress();
 
     /**
      * @brief 设置WiFi睡眠模式
@@ -188,7 +190,7 @@ public:
      * @param index 索引
      * @return SSID字符串
      */
-    static String SSID(int index);
+    static const char* SSID(int index);
 
     /**
      * @brief 获取扫描到的网络RSSI

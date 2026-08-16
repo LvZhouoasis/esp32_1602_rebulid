@@ -199,7 +199,7 @@ void acceptClientIfNew() {
                 lastClientActivity = GET_MS();
 
                 LOG_NETWORK_INFO("Socket Client connected from %s:%d",
-                    client.remoteIP().toString().c_str(),
+                    client.remoteIP().toString(),
                     client.remotePort());
             }
             xSemaphoreGive(clientMutex);

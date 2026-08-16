@@ -18,27 +18,33 @@ esp_netif_t* WiFiClass::_apNetif = nullptr;
 char WiFiClass::_connectedSSID[33] = "";
 int WiFiClass::_scanCount = 0;
 WiFiScanResult* WiFiClass::_scanResults = nullptr;
+char WiFiClass::_macBuffer[18] = "";
 
 // 全局WiFi实例
 WiFiClass WiFi;
 
 // IPAddress实现
-IPAddress::IPAddress() : _address(0) {}
+IPAddress::IPAddress() : _address(0) {
+    _strBuffer[0] = '\0';
+}
 
 IPAddress::IPAddress(uint8_t first, uint8_t second, uint8_t third, uint8_t fourth)
     : _address((uint32_t)first | ((uint32_t)second << 8) |
-               ((uint32_t)third << 16) | ((uint32_t)fourth << 24)) {}
+               ((uint32_t)third << 16) | ((uint32_t)fourth << 24)) {
+    _strBuffer[0] = '\0';
+}
 
-IPAddress::IPAddress(uint32_t address) : _address(address) {}
+IPAddress::IPAddress(uint32_t address) : _address(address) {
+    _strBuffer[0] = '\0';
+}
 
-String IPAddress::toString() const {
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%d.%d.%d.%d",
+const char* IPAddress::toString() const {
+    snprintf(_strBuffer, sizeof(_strBuffer), "%d.%d.%d.%d",
              (_address & 0xFF),
              ((_address >> 8) & 0xFF),
              ((_address >> 16) & 0xFF),
              ((_address >> 24) & 0xFF));
-    return String(buf);
+    return _strBuffer;
 }
 
 uint8_t IPAddress::operator[](int index) const {
@@ -265,8 +271,8 @@ IPAddress WiFiClass::softAPIP() {
 }
 
 // 获取SSID
-String WiFiClass::SSID() {
-    return String(_connectedSSID);
+const char* WiFiClass::SSID() {
+    return _connectedSSID;
 }
 
 // 获取RSSI
@@ -279,13 +285,12 @@ int WiFiClass::RSSI() {
 }
 
 // 获取MAC地址
-String WiFiClass::macAddress() {
+const char* WiFiClass::macAddress() {
     uint8_t mac[6];
     esp_wifi_get_mac(WIFI_IF_STA, mac);
-    char buf[18];
-    snprintf(buf, sizeof(buf), "%02X:%02X:%02X:%02X:%02X:%02X",
+    snprintf(_macBuffer, sizeof(_macBuffer), "%02X:%02X:%02X:%02X:%02X:%02X",
              mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    return String(buf);
+    return _macBuffer;
 }
 
 // 设置睡眠模式
@@ -378,11 +383,11 @@ int WiFiClass::scanNetworks() {
 }
 
 // 获取扫描到的SSID
-String WiFiClass::SSID(int index) {
+const char* WiFiClass::SSID(int index) {
     if (index < 0 || index >= _scanCount || !_scanResults) {
-        return String("");
+        return "";
     }
-    return String(_scanResults[index].ssid);
+    return _scanResults[index].ssid;
 }
 
 // 获取扫描到的RSSI

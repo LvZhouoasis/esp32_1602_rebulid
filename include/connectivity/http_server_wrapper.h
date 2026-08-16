@@ -162,13 +162,13 @@ public:
      * @param name 参数名
      * @return 参数值
      */
-    String arg(const char* name);
+    const char* arg(const char* name);
 
     /**
      * @brief 获取POST请求体
      * @return 请求体内容
      */
-    String argPlain();
+    const char* argPlain();
 
     /**
      * @brief 检查是否存在查询参数
@@ -187,14 +187,14 @@ public:
      * @brief 获取请求URI
      * @return URI字符串
      */
-    String uri();
+    const char* uri();
 
     /**
      * @brief 获取请求头
      * @param name 头名称
      * @return 头值
      */
-    String header(const char* name);
+    const char* header(const char* name);
 
     /**
      * @brief 检查是否存在请求头

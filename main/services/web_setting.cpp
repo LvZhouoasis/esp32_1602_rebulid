@@ -97,8 +97,8 @@ void webSettingHandleWifiInfo() {
     snprintf(json, sizeof(json),
         "{\"state\":\"%s\",\"wlStatus\":%d,\"ssid\":\"%s\",\"ip\":\"%s\",\"rssi\":%d,\"mac\":\"%s\"}",
         _wifiStateToStr(wifiConnectionState), (int)WiFi.status(),
-        WiFi.SSID().c_str(), WiFi.localIP().toString().c_str(),
-        WiFi.RSSI(), WiFi.macAddress().c_str());
+        WiFi.SSID(), WiFi.localIP().toString(),
+        WiFi.RSSI(), WiFi.macAddress());
 
     settingServer.send(200, "application/json; charset=utf-8", json);
 }
@@ -114,7 +114,7 @@ void webSettingHandleSetBrightness() {
         return;
     }
 
-    int value = atoi(settingServer.arg("value").c_str());
+    int value = atoi(settingServer.arg("value"));
     if (value < 0) value = 0;
     if (value > 255) value = 255;
 
@@ -198,7 +198,7 @@ void webSettingHandleOTAURL() {
         return;
     }
     
-    const char* url = settingServer.arg("url").c_str();
+    const char* url = settingServer.arg("url");
     LOG_SYSTEM_INFO("OTA from URL: %s", url);
 
     // 先响应前端,告诉它 OTA 已开始 (HTTP 202 Accepted)
@@ -369,7 +369,7 @@ void webSettingHandleSet() {
         return;
     }
 
-    const char* body = settingServer.arg("plain").c_str();
+    const char* body = settingServer.arg("plain");
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, body);
     if (err) {
@@ -522,12 +522,12 @@ void fetchCitySearchResult(char* location) {
     }
 
     // 使用 getString() 获取完整响应
-    String response = http.getString();
+    const char* response = http.getString();
     http.end();
 
     // 解压 gzip 响应
-    const char* compressedData = response.c_str();
-    int compressedSize = response.length();
+    const char* compressedData = response;
+    int compressedSize = strlen(response);
 
     char* jsonData = nullptr;
     size_t jsonDataLen = 0;
@@ -637,7 +637,7 @@ void webSettingHandleCitySearchResult() {
         citySearchState = FETCHING;
         settingServer.send(202, "application/json; charset=utf-8", "{\"status\":\"processing\"}");
         // 复制location到堆上
-        char* locCopy = strdup(settingServer.arg("location").c_str());
+        char* locCopy = strdup(settingServer.arg("location"));
         xTaskCreate([](void* param) {
             char* loc = (char*)param;
             LOG_WEATHER_DEBUG("City search task started for location: %s", loc);
@@ -670,7 +670,7 @@ void webSettingHandleSetLocation() {
         return;
     }
     char locid[32];
-    strlcpy(locid, settingServer.arg("locid").c_str(), sizeof(locid));
+    strlcpy(locid, settingServer.arg("locid"), sizeof(locid));
     // 去除首尾空格
     char* start = locid;
     while (*start == ' ') start++;
@@ -682,7 +682,7 @@ void webSettingHandleSetLocation() {
 
     char cityname[32] = "";
     if (settingServer.hasArg("fxlink")) {
-        const char* fxlink = settingServer.arg("fxlink").c_str();
+        const char* fxlink = settingServer.arg("fxlink");
         const char* weatherStart = strstr(fxlink, "/weather/");
         const char* lastDash = strrchr(fxlink, '-');
         if (weatherStart && lastDash && lastDash > weatherStart + 9) {
@@ -782,7 +782,7 @@ void webSettingSetupWebServer() {
 
     // 获取当前IP地址并显示
     lcdText("Config Mode", 1);
-    lcdText(WiFi.localIP().toString().c_str(), 2);
+    lcdText(WiFi.localIP().toString(), 2);
     while(isConfigDone == false){
         settingServer.handleClient();
         WAIT_MS(1);

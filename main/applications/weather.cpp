@@ -262,11 +262,11 @@ bool fetchWeatherData() {
     }
 
     // 使用 getString() 获取完整响应
-    String response = http.getString();
+    const char* response = http.getString();
     http.end();
 
-    const char* compressedData = response.c_str();
-    int compressedSize = response.length();
+    const char* compressedData = response;
+    int compressedSize = strlen(response);
 
     if (compressedSize == 0) {
         LOG_WEATHER_ERROR("No data received");

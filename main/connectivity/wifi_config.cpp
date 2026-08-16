@@ -91,7 +91,7 @@ void wifiScanhandler(){
 
             for (int i = 0; i < n && pos < sizeof(scanResult) - 1; ++i) {
                 char ssidBuf[33];
-                strlcpy(ssidBuf, WiFi.SSID(i).c_str(), sizeof(ssidBuf));
+                strlcpy(ssidBuf, WiFi.SSID(i), sizeof(ssidBuf));
                 pos += snprintf(scanResult + pos, sizeof(scanResult) - pos,
                     "{\"ssid\":\"%s\",\"rssi\":%d,\"secure\":%s}%s",
                     ssidBuf, WiFi.RSSI(i),
@@ -122,8 +122,8 @@ void wifiScanhandler(){
 }
 
 void wifiSethandler(){
-	const char* ssid = apServer.arg("ssid").c_str();
-	const char* password = apServer.arg("password").c_str();
+	const char* ssid = apServer.arg("ssid");
+	const char* password = apServer.arg("password");
 	LOG_NETWORK_INFO("access /wifi_set");
 	LOG_NETWORK_INFO("ssid: %s", ssid);
 	_saveWiFiCredentials(ssid, password);
@@ -141,7 +141,7 @@ void enterConfigMode() {
 	WiFi.softAP("1602A_Config");
 
     LOG_WIFI_INFO("Entering config mode");
-	LOG_WIFI_INFO("Config webpage started at IP: %s", WiFi.softAPIP().toString().c_str());
+	LOG_WIFI_INFO("Config webpage started at IP: %s", WiFi.softAPIP().toString());
 
 	// 启动DNS服务器，将所有域名请求劫持到ESP32的IP
 	IPAddress softIP = WiFi.softAPIP();
@@ -152,7 +152,7 @@ void enterConfigMode() {
 	// 捕获所有DNS请求并重定向到配网页面
 	apServer.onNotFound([](){
 		char location[32];
-		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString().c_str());
+		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString());
 		apServer.sendHeader("Location", location, true);
 		apServer.send(302, "text/plain", "");
 	});
@@ -170,7 +170,7 @@ void enterConfigMode() {
 	// Android 设备检测
 	apServer.on("/generate_204", [](){
 		char location[32];
-		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString().c_str());
+		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString());
 		apServer.sendHeader("Location", location, true);
 		apServer.send(302, "text/plain", "");
 	});
@@ -178,7 +178,7 @@ void enterConfigMode() {
 	// iOS 设备检测
 	apServer.on("/hotspot-detect.html", [](){
 		char location[32];
-		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString().c_str());
+		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString());
 		apServer.sendHeader("Location", location, true);
 		apServer.send(302, "text/plain", "");
 	});
@@ -186,7 +186,7 @@ void enterConfigMode() {
 	// Windows 设备检测
 	apServer.on("/ncsi.txt", [](){
 		char location[32];
-		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString().c_str());
+		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString());
 		apServer.sendHeader("Location", location, true);
 		apServer.send(302, "text/plain", "");
 	});
@@ -194,7 +194,7 @@ void enterConfigMode() {
 	// 通用重定向端点
 	apServer.on("/redirect", [](){
 		char location[32];
-		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString().c_str());
+		snprintf(location, sizeof(location), "http://%s", WiFi.softAPIP().toString());
 		apServer.sendHeader("Location", location, true);
 		apServer.send(302, "text/plain", "");
 	});
@@ -204,7 +204,7 @@ void enterConfigMode() {
 	// 在屏幕上显示ip
 	lcdText("Connect to AP",1);
 	char ipBuf[17];
-	snprintf(ipBuf, sizeof(ipBuf), "IP:%s", WiFi.softAPIP().toString().c_str());
+	snprintf(ipBuf, sizeof(ipBuf), "IP:%s", WiFi.softAPIP().toString());
 	lcdText(ipBuf, 2);
 }
 
@@ -280,7 +280,7 @@ void wifiConnectTask(void* parameter) {
 			vTaskDelay(pdMS_TO_TICKS(50));
 			ip = WiFi.localIP();
 		}
-		LOG_WIFI_DEBUG("STA IP after connect: %s", ip.toString().c_str());
+		LOG_WIFI_DEBUG("STA IP after connect: %s", ip.toString());
 
 		// 启动TCP服务器（放在 IP/DNS 完成后）
 		LOG_WIFI_DEBUG("Starting TCP server...");
@@ -288,7 +288,7 @@ void wifiConnectTask(void* parameter) {
 		LOG_WIFI_INFO("TCP server started on port %d", CONNECT_PORT);
 
 		LOG_WIFI_INFO("connected: %s", wifiConfigManager.getSSID());
-		LOG_WIFI_INFO("IP: %s", WiFi.localIP().toString().c_str());
+		LOG_WIFI_INFO("IP: %s", WiFi.localIP().toString());
 		LOG_WIFI_DEBUG("starting background time sync...");
 
 		// 稳定性优先：保持关闭 WiFi 睡眠，避免在当前固件中再次触发 pm/idle 相关异常。
