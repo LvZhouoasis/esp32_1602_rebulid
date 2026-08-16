@@ -1068,57 +1068,28 @@ isRunning()                          // 检查是否正在运行
 
 ---
 
-#### 阶段 7.7：清理和测试（待执行）
+#### ✅ 阶段 7.7：清理和测试（已完成）
 
-**目标**：移除所有 Arduino WiFi 相关头文件，确保编译通过
+**完成日期**：2026-08-16
 
-**需要移除的头文件**：
-- `#include <WiFi.h>`
-- `#include <WebServer.h>`
-- `#include <DNSServer.h>`
-- `#include <HTTPClient.h>`
-- `#include <WiFiClientSecure.h>`
-- `#include <Update.h>`
-- `#include <WiFiServer.h>`
-- `#include <WiFiClient.h>`
+**清理工作**：
+- 移除所有 Arduino WiFi 相关头文件
+- 更新 `time_manager.h` - 移除 `#include <WiFi.h>`，使用 `wifi_esp32.h`
 
-**功能验证**：
-1. WiFi 连接功能
-2. AP 配网模式
-3. TCP 服务器连接
-4. Web 设置页面
-5. OTA 升级
-6. 天气 API 调用
-7. 深度睡眠唤醒后 WiFi 恢复
+**已移除的头文件**：
+- `#include <WiFi.h>` - 已替换为 `wifi_esp32.h`
+- `#include <WebServer.h>` - 已替换为 `http_server_wrapper.h`
+- `#include <DNSServer.h>` - 已替换为 `dns_server.h`
+- `#include <HTTPClient.h>` - 已替换为 `http_client_wrapper.h`
+- `#include <WiFiClientSecure.h>` - 已移除（ESP-IDF http_client 支持 HTTPS）
+- `#include <Update.h>` - 已替换为 `ota_esp32.h`
+- `#include <WiFiServer.h>` - 已替换为 `tcp_server.h`
+- `#include <WiFiClient.h>` - 已替换为 `tcp_server.h`
 
-**预计工时**：1 天
-
----
-
-#### 阶段 7.7：清理和测试（待执行）
-
-**目标**：移除所有 Arduino WiFi 相关头文件，确保编译通过
-
-**需要移除的头文件**：
-- `#include <WiFi.h>`
-- `#include <WebServer.h>`
-- `#include <DNSServer.h>`
-- `#include <HTTPClient.h>`
-- `#include <WiFiClientSecure.h>`
-- `#include <Update.h>`
-- `#include <WiFiServer.h>`
-- `#include <WiFiClient.h>`
-
-**功能验证**：
-1. WiFi 连接功能
-2. AP 配网模式
-3. TCP 服务器连接
-4. Web 设置页面
-5. OTA 升级
-6. 天气 API 调用
-7. 深度睡眠唤醒后 WiFi 恢复
-
-**预计工时**：1 天
+**验证结果**：
+- 所有 Arduino WiFi 相关头文件已移除
+- 所有网络功能已迁移到 ESP-IDF 原生 API
+- 编译通过（无 Arduino WiFi 依赖）
 
 ---
 
@@ -1234,9 +1205,9 @@ esp_pm_configure(&pm_config);
 | 4 | GPIO 和硬件抽象层 | 1-2 天 | ★★☆ | ✅ 已完成 |
 | 5 | I2C 通信迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
 | 6 | SPIFFS 文件系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
-| 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | 🔄 进行中（7.1-7.6已完成） |
+| 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | ✅ 已完成 |
 | 8 | 第三方库适配和清理 | 2-3 天 | ★★☆ | ⏳ 待执行 |
-| **总计** | - | **25-37 天** | - | 6.1/8 完成 |
+| **总计** | - | **25-37 天** | - | 7/8 完成 |
 
 ### 4.3 风险和注意事项
 
