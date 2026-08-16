@@ -1,8 +1,9 @@
 # ESP32 1602A 项目分析与 ESP-IDF 迁移计划
 
-> 文档版本：1.0
+> 文档版本：1.1
 > 创建日期：2026-08-15
-> 当前分支：1.1.0（基于 1.0.1，已完成方案B：millis/delay 替换）
+> 最后更新：2026-08-16
+> 当前分支：1.1.2（基于 1.0.1，已完成方案B：millis/delay 替换）
 
 ---
 
@@ -1093,6 +1094,33 @@ isRunning()                          // 检查是否正在运行
 
 ---
 
+#### ✅ 阶段 7 代码审查（2026-08-16）
+
+在完成阶段7后进行了全面的逐行代码审查，发现并修复了以下问题：
+
+**关键 Bug 修复**：
+
+| 文件 | 问题 | 修复方案 |
+|------|------|----------|
+| `ota_esp32.cpp` | `write()` 返回 `-1`，但 `size_t` 是无符号类型 | 改为返回 `0` 表示失败 |
+| `lcd_driver.cpp` | 使用 Arduino 专有的 `Serial.printf()` | 替换为 `ESP_LOGW()` |
+| `main.cpp` | 使用 Arduino 专有的 `esp32-hal-cpu.h` 和 `setCpuFrequencyMhz()` | 替换为 `esp_clk.h` 和 `esp_pm_configure()` |
+| `http_server_wrapper.cpp` | 路由注册时缺少 PUT/DELETE 方法 | 补充完整 4 种 HTTP 方法注册 |
+| `tcp_server.cpp` | 缺少 `poll()` 和 `ioctl()` 所需头文件 | 添加 `<poll.h>` 和 `<sys/ioctl.h>` |
+
+**Arduino 兼容层增强**：
+
+| 文件 | 新增内容 |
+|------|----------|
+| `mydefine.h` | 添加 Arduino 兼容常量：`HIGH`, `LOW`, `INPUT`, `OUTPUT`, `INPUT_PULLUP`, `INPUT_PULLDOWN` |
+| `mydefine.h` | 添加 `pinMode()` 函数封装 |
+
+**已知遗留问题**：
+
+1. **web_setting.cpp OTA 上传功能**：代码仍使用 Arduino 的 `HTTPUpload` 结构和 `settingServer.upload()` 方法，这些在 ESP-IDF HTTP Server Wrapper 中未实现。需要在 HttpServer 类中添加文件上传支持。
+
+---
+
 #### 7.4 OTA
 ```cpp
 // Arduino Update
@@ -1138,6 +1166,7 @@ const char data[] PROGMEM = "...";
 // ESP32-S3 统一地址空间，PROGMEM 不需要
 // 直接使用 const char data[] = "...";
 ```
+**状态**：✅ 已在阶段6完成
 
 #### 8.6 ESP.restart()
 ```cpp
@@ -1147,6 +1176,7 @@ ESP.restart();
 // ESP-IDF
 esp_restart();
 ```
+**状态**：✅ 已在阶段6完成
 
 #### 8.7 ESP.getFreeHeap()
 ```cpp
@@ -1162,6 +1192,7 @@ esp_get_minimum_free_heap_size();
 heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
 heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
 ```
+**状态**：✅ 已在阶段6完成
 
 #### 8.8 setCpuFrequencyMhz()
 ```cpp
@@ -1177,6 +1208,32 @@ esp_pm_config_esp32s3_t pm_config = {
 };
 esp_pm_configure(&pm_config);
 ```
+**状态**：✅ 已在阶段7代码审查中完成
+
+#### 8.9 HTTP 文件上传支持（待实现）
+
+**目标**：为 web_setting.cpp 的 OTA 上传功能添加 ESP-IDF 原生支持
+
+**当前状态**：
+- web_setting.cpp 仍使用 Arduino 的 `HTTPUpload` 结构
+- 需要在 HttpServer 类中添加文件上传处理接口
+
+**实现方案**：
+```cpp
+// 在 http_server_wrapper.h 中添加
+struct HttpUpload {
+    const char* filename;
+    const uint8_t* buf;
+    size_t currentSize;
+    size_t totalSize;
+    int status;  // UPLOAD_FILE_START, UPLOAD_FILE_WRITE, UPLOAD_FILE_END
+};
+
+// 添加上传处理回调注册
+void onUpload(const char* uri, std::function<void(HttpUpload&)> handler);
+```
+
+**预计工时**：1 天
 
 ---
 
@@ -1206,8 +1263,9 @@ esp_pm_configure(&pm_config);
 | 5 | I2C 通信迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
 | 6 | SPIFFS 文件系统迁移 | 2-3 天 | ★★☆ | ✅ 已完成 |
 | 7 | WiFi 和网络迁移 | 9-14 天 | ★★★★ | ✅ 已完成 |
-| 8 | 第三方库适配和清理 | 2-3 天 | ★★☆ | ⏳ 待执行 |
-| **总计** | - | **25-37 天** | - | 7/8 完成 |
+| 7+ | 阶段7代码审查 | 0.5 天 | ★★☆ | ✅ 已完成 |
+| 8 | 第三方库适配和清理 | 1-2 天 | ★★☆ | ⏳ 待执行 |
+| **总计** | - | **24-37 天** | - | 7.5/8 完成 |
 
 ### 4.3 风险和注意事项
 
@@ -1289,4 +1347,4 @@ coredump, data, coredump,0x510000,  0x10000
 ---
 
 > **文档维护者**：Claude
-> **最后更新**：2026-08-15
+> **最后更新**：2026-08-16

@@ -6,18 +6,19 @@
 
 ## 最新Release信息
 
-- Version: **1.0.4(10A031)**
-- 发布日期: **2025/12/16**
-- 概要: 重构include路径并添加动画支持
+- Version: **1.1.2**
+- 发布日期: **2026/08/16**
+- 概要: 完全迁移到 ESP-IDF 框架，移除 Arduino 依赖
+
 ### 更新内容
-- 重构: 更新了各个源文件的include路径，改为使用相对路径。
-- 新功能: 引入了动画系统，支持多种动画（WiFi 搜索、加载旋- 转、错误、时钟）。
-- 新功能: 增强了菜单显示功能，利用动画展示 WiFi 连接状态和时间同步状态。
-- 优化: 改进了配置管理器，增加了更好的错误处理和日志记录。
-- 添加: 为新的动画系统添加了测试。
-- 重构: 适配新PCB，修改了 ESP32-S3 的IO接口。
-- 适配: 适配新PCB，Pio开发板、改为自定义板。
-- 适配: 适配新的16MB Flash，修改了分区表。
+- **重大变更**: 完全从 Arduino 框架迁移到纯 ESP-IDF 框架
+- 移除: 所有 Arduino 依赖（WiFi.h, WebServer.h, HTTPClient.h 等）
+- 新增: ESP-IDF 原生封装层（WiFi, HTTP Server/Client, TCP Server, DNS Server, OTA）
+- 优化: String 类全部替换为 C 风格字符串（char[] + snprintf/strlcpy）
+- 优化: SPIFFS 文件系统迁移到 ESP-IDF VFS POSIX API
+- 优化: I2C 通信迁移到 ESP-IDF 原生驱动
+- 优化: GPIO/LEDC 操作封装为 Arduino 兼容 API
+- 重构: 项目结构改为 ESP-IDF 标准目录布局
 
 
 ---
@@ -45,30 +46,52 @@
 
 ## 软件依赖
 
-- Arduino-ESP32 核心库（本工程使用 PlatformIO + Arduino 框架）
-- [FastLED](https://github.com/FastLED/FastLED)
-- [ArduinoJson](https://github.com/bblanchon/ArduinoJson)
-- [libsodium](https://github.com/jedisct1/libsodium)
-- [zlib_turbo](https://github.com/bitbank2/zlib_turbo)
+- **ESP-IDF** (推荐 v5.x 或更高版本)
+- [FastLED](https://github.com/FastLED/FastLED) - WS2812 RGB LED 控制
+- [ArduinoJson](https://github.com/bblanchon/ArduinoJson) - JSON 解析/生成
+- [libsodium](https://github.com/jedisct1/libsodium) - Ed25519 签名（JWT 认证）
+- [zlib_turbo](https://github.com/bitbank2/zlib_turbo) - Gzip 解压
 
 ---
 
 ## 编译与烧录
 
-本项目使用 **PlatformIO** 开发框架，支持 ESP32-S3-N8R8（8MB Flash + 8MB PSRAM）开发板。
-
-### 环境准备
-
-1. 安装 [VS Code](https://code.visualstudio.com/)
-2. 安装 [PlatformIO IDE 插件](https://platformio.org/install/ide?install=vscode)
-3. 安装 Python 3.x（用于版本管理脚本）
+本项目已完全迁移到 **ESP-IDF** 框架，同时保留 PlatformIO 兼容性。
 
 ### 硬件要求
 
 - **开发板**：ESP32-S3-DevKitC-1 或兼容板
-- **Flash**：8MB（N8）
+- **Flash**：16MB（N16）
 - **PSRAM**：8MB OPI PSRAM（R8）
 - **USB 连接**：用于烧录和串口监视
+
+### ESP-IDF 编译方式（推荐）
+
+1. 安装 [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/get-started/)
+2. 设置 ESP-IDF 环境变量
+3. 编译和烧录：
+
+```bash
+# 配置项目
+idf.py menuconfig
+
+# 编译
+idf.py build
+
+# 烧录
+idf.py -p /dev/ttyUSBx flash
+
+# 监视串口
+idf.py -p /dev/ttyUSBx monitor
+```
+
+### PlatformIO 编译方式（兼容）
+
+#### 环境准备
+
+1. 安装 [VS Code](https://code.visualstudio.com/)
+2. 安装 [PlatformIO IDE 插件](https://platformio.org/install/ide?install=vscode)
+3. 安装 Python 3.x（用于版本管理脚本）
 
 ### 编译环境
 

@@ -2,7 +2,7 @@
 
 > 基于 kuilb/esp32_1602 的个人定制版本
 > GitHub: https://github.com/LvZhouoasis/esp32_1602_rebulid
-> 当前分支: `1.0.1`（基于 `1.0.0`，已删除日文假名显示功能）
+> 当前分支: `1.1.2`（纯 ESP-IDF 框架，已完全移除 Arduino 依赖）
 
 ---
 
@@ -53,51 +53,61 @@ I2C:  SDA=38, SCL=21
 
 ```
 second/
-├── src/                          # 源代码
-│   ├── main.cpp                  # 主程序入口 + 功耗管理
-│   ├── hardware/                 # 硬件驱动层
-│   │   ├── lcd_driver.cpp        # LCD 驱动（差分刷新核心）
-│   │   ├── button.cpp            # 按键扫描（FreeRTOS 双任务）
-│   │   ├── buzzer.cpp            # 蜂鸣器（队列式非阻塞播放）
-│   │   ├── rgb_led.cpp           # WS2812 RGB LED
-│   │   ├── fuel_gauge.cpp        # BQ27421 电量计
-│   │   └── opt3001.cpp           # OPT3001 光传感器
-│   ├── applications/             # 应用层
-│   │   ├── clock.cpp             # 时钟（NTP 同步）
-│   │   ├── weather.cpp           # 天气（和风天气 API）
-│   │   ├── pomodoro.cpp          # 番茄钟
-│   │   ├── badappleplayer.cpp    # Bad Apple 播放器
-│   │   ├── setting.cpp           # 设置界面
-│   │   └── about.cpp             # 关于信息
-│   ├── connectivity/             # 网络连接层
-│   │   ├── wifi_config.cpp       # WiFi 配网（AP + Web）
-│   │   ├── network.cpp           # TCP 服务器 + 帧缓存
-│   │   └── jwt_auth.cpp          # JWT 认证（Ed25519）
-│   ├── services/                 # 服务层
-│   │   ├── protocol.cpp          # 自定义协议解析
-│   │   ├── playbuffer.cpp        # 帧播放缓冲
-│   │   ├── config_manager.cpp    # 配置管理器基类
+├── CMakeLists.txt              # ESP-IDF 项目根配置
+├── main/                       # 主组件目录（ESP-IDF 标准结构）
+│   ├── CMakeLists.txt          # 主组件配置
+│   ├── main.cpp                # 主程序入口 + 功耗管理
+│   ├── hardware/               # 硬件驱动层
+│   │   ├── lcd_driver.cpp      # LCD 驱动（差分刷新核心）
+│   │   ├── button.cpp          # 按键扫描（FreeRTOS 双任务）
+│   │   ├── buzzer.cpp          # 蜂鸣器（队列式非阻塞播放）
+│   │   ├── rgb_led.cpp         # WS2812 RGB LED
+│   │   ├── fuel_gauge.cpp      # BQ27421 电量计
+│   │   └── opt3001.cpp         # OPT3001 光传感器
+│   ├── applications/           # 应用层
+│   │   ├── clock.cpp           # 时钟（NTP 同步）
+│   │   ├── weather.cpp         # 天气（和风天气 API）
+│   │   ├── pomodoro.cpp        # 番茄钟
+│   │   ├── badappleplayer.cpp  # Bad Apple 播放器
+│   │   ├── setting.cpp         # 设置界面
+│   │   └── about.cpp           # 关于信息
+│   ├── connectivity/           # 网络连接层（ESP-IDF 封装）
+│   │   ├── wifi_esp32.cpp      # WiFi 封装（兼容 Arduino WiFi API）
+│   │   ├── wifi_config.cpp     # WiFi 配网（AP + Web）
+│   │   ├── network.cpp         # TCP 服务器 + 帧缓存
+│   │   ├── tcp_server.cpp      # TCP Server/Client 封装
+│   │   ├── http_server_wrapper.cpp # HTTP 服务器封装
+│   │   ├── http_client_wrapper.cpp # HTTP 客户端封装
+│   │   ├── dns_server.cpp      # DNS 服务器（强制门户）
+│   │   └── jwt_auth.cpp        # JWT 认证（Ed25519）
+│   ├── services/               # 服务层
+│   │   ├── protocol.cpp        # 自定义协议解析
+│   │   ├── playbuffer.cpp      # 帧播放缓冲
+│   │   ├── config_manager.cpp  # 配置管理器基类
 │   │   ├── wifi_config_manager.cpp
 │   │   ├── qweather_auth_config_manager.cpp
-│   │   ├── ota_manager.cpp       # OTA 升级
-│   │   ├── time_manager.cpp      # NTP 时间同步
-│   │   ├── sleep_manager.cpp     # 深度睡眠管理
-│   │   ├── auto_brightness.cpp   # 自动亮度
-│   │   ├── kanamap.cpp           # 假名映射（已禁用）
-│   │   └── web_setting.cpp       # Web 设置服务器
-│   ├── menu/                     # 菜单系统
-│   │   ├── menu.cpp              # 菜单核心逻辑
-│   │   ├── menu_item.cpp         # 菜单项定义
-│   │   ├── menu_navigator.cpp    # 菜单导航
+│   │   ├── ota_manager.cpp     # OTA 升级
+│   │   ├── ota_esp32.cpp       # OTA 封装（ESP-IDF 原生）
+│   │   ├── time_manager.cpp    # NTP 时间同步
+│   │   ├── sleep_manager.cpp   # 深度睡眠管理
+│   │   ├── auto_brightness.cpp # 自动亮度
+│   │   ├── kanamap.cpp         # 假名映射（已禁用）
+│   │   └── web_setting.cpp     # Web 设置服务器
+│   ├── menu/                   # 菜单系统
+│   │   ├── menu.cpp            # 菜单核心逻辑
+│   │   ├── menu_item.cpp       # 菜单项定义
+│   │   ├── menu_navigator.cpp  # 菜单导航
 │   │   └── status_bar_renderer.cpp # 状态栏渲染
-│   ├── ui/                       # UI 组件
-│   │   ├── animetion.cpp         # 动画系统
-│   │   ├── icons.cpp             # 图标定义
-│   │   └── hold_progress.cpp     # 长按进度条
-│   └── utils/                    # 工具类
-│       ├── logger.cpp            # 多模块日志系统
-│       └── memory_utils.cpp      # 内存工具
-├── include/                      # 头文件（与 src 对应）
+│   ├── ui/                     # UI 组件
+│   │   ├── animetion.cpp       # 动画系统
+│   │   ├── icons.cpp           # 图标定义
+│   │   └── hold_progress.cpp   # 长按进度条
+│   └── utils/                  # 工具类
+│       ├── logger.cpp          # 多模块日志系统
+│       └── memory_utils.cpp    # 内存工具
+├── include/                    # 公共头文件
+├── sdkconfig.defaults          # ESP-IDF 默认配置
+└── partitions.csv              # Flash 分区表
 ├── test/                         # 单元测试
 ├── data/                         # SPIFFS 数据（badapple.bin）
 ├── website/                      # Web 前端源文件
