@@ -9,6 +9,7 @@
 #include "./connectivity/wifi_esp32.h"
 #include "./connectivity/http_server_wrapper.h"
 #include "./connectivity/http_client_wrapper.h"
+#include "./services/ota_esp32.h"
 #include <cstring>
 #include "esp_system.h"
 #include "esp_clk_tree.h"
@@ -21,6 +22,7 @@ volatile bool isKeyDone = false;
 volatile bool otaUploadSuccess = false;
 static size_t otaExpectedSize = 0;      // 预期的OTA文件大小
 static bool s_otaModuleInitialized = false;
+static OTAUpdate webOtaUpdate;  // HTTP OTA上传使用的OTAUpdate实例
 
 static const char* _wifiStateToStr(WiFiConnectionState state) {
     switch (state) {
@@ -275,13 +277,13 @@ void webSettingHandleOTAUpload() {
             updateColor(CRGB::Orange);
             otaExpectedSize = 0;  // 重置预期大小
             
-            // http上传无法提前获取文件大小，让update库使用未知大小模式
-            if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+            // http上传无法提前获取文件大小，使用未知大小模式
+            if (!webOtaUpdate.begin()) {
                 LOG_SYSTEM_ERROR("OTA begin failed");
                 lcdText("OTA Begin Fail", 1);
                 lcdText("", 2);
                 char errBuf[128];
-                snprintf(errBuf, sizeof(errBuf), "{\"success\":false,\"error\":\"%s\"}", Update.errorString());
+                snprintf(errBuf, sizeof(errBuf), "{\"success\":false,\"error\":\"%s\"}", webOtaUpdate.errorString());
                 settingServer.send(500, "application/json", errBuf);
                 return;
             }
@@ -291,23 +293,24 @@ void webSettingHandleOTAUpload() {
     // 分片上传阶段
     else if (upload.status == UPLOAD_FILE_WRITE) {
         // 如果写入字节不匹配
-        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+        size_t written = webOtaUpdate.write(upload.buf, upload.currentSize);
+        if (written != upload.currentSize) {
             LOG_SYSTEM_ERROR("OTA write failed");
-            Update.abort();  // abort 回滚
-            settingServer.send(500, "application/json", 
+            webOtaUpdate.abort();  // abort 回滚
+            settingServer.send(500, "application/json",
                 "{\"success\":false,\"error\":\"写入失败\"}");
             lcdText("OTA Write Fail", 1);
             lcdText("", 2);
             return;
         }
-        
+
         // 显示已写入的字节数
         static size_t lastReported = 0;
-        size_t written = Update.progress();
+        size_t totalWritten = webOtaUpdate.written();
         // 每100KB显示一次进度
-        if (written - lastReported >= 102400 || (written >= 10240 && lastReported == 0)) {
-            LOG_SYSTEM_INFO("OTA uploading:%u B (%u KB) written", written, written / 1024);
-            lastReported = written;
+        if (totalWritten - lastReported >= 102400 || (totalWritten >= 10240 && lastReported == 0)) {
+            LOG_SYSTEM_INFO("OTA uploading:%u B (%u KB) written", totalWritten, totalWritten / 1024);
+            lastReported = totalWritten;
         }
     }
 
@@ -315,21 +318,21 @@ void webSettingHandleOTAUpload() {
     else if (upload.status == UPLOAD_FILE_END) {
         LOG_SYSTEM_INFO("OTA Upload End: %u bytes (%.2f KB)", upload.totalSize, upload.totalSize / 1024.0);
         otaExpectedSize = upload.totalSize;  // 保存最终大小
-        if (Update.end(true)) {
+        if (webOtaUpdate.end(false)) {
             LOG_SYSTEM_INFO("OTA Success! Firmware size: %u", upload.totalSize);
             lcdText("OTA Success!", 1);
             lcdText("Rebooting...", 2);
             updateColor(CRGB::Green);
             otaUploadSuccess = true;  // 标记上传成功
-            
+
             // 创建后台重启任务，等待结束响应发送完成
             xTaskCreate([](void*){
                 WAIT_MS(2000);
                 esp_restart();
             }, "Restart_Task", 2048, NULL, 1, NULL);
-        } 
+        }
         else {  // 如果结束时出错
-            LOG_SYSTEM_ERROR("OTA End failed: %s", Update.errorString());
+            LOG_SYSTEM_ERROR("OTA End failed: %s", webOtaUpdate.errorString());
             otaUploadSuccess = false;
             return;
         }
@@ -750,7 +753,7 @@ void webSettingSetupWebServer() {
             } else {
                 char errBuf[128];
                 snprintf(errBuf, sizeof(errBuf), "{\"success\":false,\"error\":\"%s\"}",
-                    Update.hasError() ? Update.errorString() : "上传失败");
+                    webOtaUpdate.isRunning() ? webOtaUpdate.errorString() : "上传失败");
                 settingServer.send(500, "application/json", errBuf);
             }
             otaUploadSuccess = false;  // 重置标志
